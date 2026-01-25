@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Tech Platform</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+        }
+        .post {
+            border: 1px solid #ddd;
+            padding: 16px;
+            margin-bottom: 16px;
+            border-radius: 6px;
+        }
+        .title {
+            font-weight: bold;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Tech Platform 🚀</h1>
+<div id="posts">Loading...</div>
+
+<script>
+    fetch("/api/content")
+        .then(res => res.json())
+        .then(data => {
+            const container = document.getElementById("posts");
+            container.innerHTML = "";
+
+            if (data.length === 0) {
+                container.innerHTML = "<p>No posts yet</p>";
+                return;
+            }
+
+            data.forEach(post => {
+                const div = document.createElement("div");
+                div.className = "post";
+                div.innerHTML = `
+                <div class="title">${post.title}</div>
+                <p>${post.preview || ""}</p>
+            `;
+                container.appendChild(div);
+            });
+        })
+        .catch(() => {
+            document.getElementById("posts").innerText =
+                "Error loading posts";
+        });
+</script>
+
+</body>
+</html>
