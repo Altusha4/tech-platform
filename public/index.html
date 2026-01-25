@@ -6,12 +6,28 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 40px;
-            background: #f9f9f9;
+            background: #f5f5f5;
+            padding: 40px;
         }
 
-        h1 {
-            margin-bottom: 20px;
+        h1 { margin-bottom: 10px; }
+
+        form {
+            background: #fff;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        input, textarea {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 8px;
+        }
+
+        button {
+            padding: 8px 12px;
+            cursor: pointer;
         }
 
         .post {
@@ -19,22 +35,12 @@
             padding: 16px;
             margin-bottom: 16px;
             border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-        }
-
-        .post h3 {
-            margin: 0 0 8px;
-        }
-
-        .post p {
-            margin: 0;
-            color: #555;
         }
 
         .meta {
-            margin-top: 8px;
             font-size: 12px;
-            color: #888;
+            color: #777;
+            margin-top: 6px;
         }
     </style>
 </head>
@@ -42,43 +48,61 @@
 
 <h1>Tech Platform 🚀</h1>
 
-<div id="posts">Loading posts...</div>
+<h2>Create post</h2>
+<form id="postForm">
+    <input id="title" placeholder="Title" required />
+    <textarea id="description" placeholder="Description" required></textarea>
+    <button type="submit">Publish</button>
+</form>
+
+<h2>Posts</h2>
+<div id="posts">Loading...</div>
 
 <script>
     async function loadPosts() {
-        try {
-            const response = await fetch("/api/content");
-            const posts = await response.json();
+        const res = await fetch("/api/content");
+        const posts = await res.json();
 
-            const container = document.getElementById("posts");
-            container.innerHTML = "";
+        const container = document.getElementById("posts");
+        container.innerHTML = "";
 
-            if (posts.length === 0) {
-                container.innerHTML = "<p>No posts yet</p>";
-                return;
-            }
+        posts.forEach(post => {
+            const div = document.createElement("div");
+            div.className = "post";
 
-            posts.forEach(post => {
-                const div = document.createElement("div");
-                div.className = "post";
+            div.innerHTML = `
+            <h3>${post.title}</h3>
+            <p>${post.description}</p>
+            <div class="meta">
+                Likes: ${post.likes || 0}
+            </div>
+            <button onclick="likePost('${post._id}')">👍 Like</button>
+        `;
 
-                div.innerHTML = `
-                    <h3>${post.title}</h3>
-                    <p>${post.preview || ""}</p>
-                    <div class="meta">
-                        Category: ${post.category || "—"} |
-                        Language: ${post.language || "—"}
-                    </div>
-                `;
-
-                container.appendChild(div);
-            });
-
-        } catch (error) {
-            document.getElementById("posts").innerHTML =
-                "<p>Failed to load posts</p>";
-        }
+            container.appendChild(div);
+        });
     }
+
+    async function likePost(id) {
+        await fetch(`/api/content/${id}/like`, { method: "POST" });
+        loadPosts();
+    }
+
+    document.getElementById("postForm").addEventListener("submit", async e => {
+        e.preventDefault();
+
+        const title = document.getElementById("title").value;
+        const description = document.getElementById("description").value;
+
+        await fetch("/api/content", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, description })
+        });
+
+        e.target.reset();
+        loadPosts();
+    });
 
     loadPosts();
 </script>
