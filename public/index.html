@@ -1,111 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Tech Platform</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
-            padding: 40px;
-        }
-
-        h1 { margin-bottom: 10px; }
-
-        form {
-            background: #fff;
-            padding: 16px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-        }
-
-        input, textarea {
-            width: 100%;
-            margin-bottom: 10px;
-            padding: 8px;
-        }
-
-        button {
-            padding: 8px 12px;
-            cursor: pointer;
-        }
-
-        .post {
-            background: #fff;
-            padding: 16px;
-            margin-bottom: 16px;
-            border-radius: 8px;
-        }
-
-        .meta {
-            font-size: 12px;
-            color: #777;
-            margin-top: 6px;
-        }
-    </style>
+    <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
 
-<h1>Tech Platform 🚀</h1>
+<div class="container">
+    <h1>Tech Platform 🚀</h1>
 
-<h2>Create post</h2>
-<form id="postForm">
-    <input id="title" placeholder="Title" required />
-    <textarea id="description" placeholder="Description" required></textarea>
-    <button type="submit">Publish</button>
-</form>
+    <section class="create-post">
+        <h2>Create post</h2>
+        <input id="title" type="text" placeholder="Title" />
+        <textarea id="description" placeholder="Description"></textarea>
+        <button id="publishBtn">Publish</button>
+    </section>
 
-<h2>Posts</h2>
-<div id="posts">Loading...</div>
+    <section>
+        <h2>Posts</h2>
+        <div id="posts"></div>
+    </section>
+</div>
 
-<script>
-    async function loadPosts() {
-        const res = await fetch("/api/content");
-        const posts = await res.json();
-
-        const container = document.getElementById("posts");
-        container.innerHTML = "";
-
-        posts.forEach(post => {
-            const div = document.createElement("div");
-            div.className = "post";
-
-            div.innerHTML = `
-            <h3>${post.title}</h3>
-            <p>${post.description}</p>
-            <div class="meta">
-                Likes: ${post.likes || 0}
-            </div>
-            <button onclick="likePost('${post._id}')">👍 Like</button>
-        `;
-
-            container.appendChild(div);
-        });
-    }
-
-    async function likePost(id) {
-        await fetch(`/api/content/${id}/like`, { method: "POST" });
-        loadPosts();
-    }
-
-    document.getElementById("postForm").addEventListener("submit", async e => {
-        e.preventDefault();
-
-        const title = document.getElementById("title").value;
-        const description = document.getElementById("description").value;
-
-        await fetch("/api/content", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title, description })
-        });
-
-        e.target.reset();
-        loadPosts();
-    });
-
-    loadPosts();
-</script>
-
+<script src="/js/app.js"></script>
 </body>
 </html>
