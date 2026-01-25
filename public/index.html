@@ -1,56 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8">
     <title>Tech Platform</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            padding: 40px;
+            margin: 40px;
+            background: #f9f9f9;
         }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
         .post {
-            border: 1px solid #ddd;
+            background: #fff;
             padding: 16px;
             margin-bottom: 16px;
-            border-radius: 6px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
         }
-        .title {
-            font-weight: bold;
-            font-size: 18px;
+
+        .post h3 {
+            margin: 0 0 8px;
+        }
+
+        .post p {
+            margin: 0;
+            color: #555;
+        }
+
+        .meta {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #888;
         }
     </style>
 </head>
 <body>
 
 <h1>Tech Platform 🚀</h1>
-<div id="posts">Loading...</div>
+
+<div id="posts">Loading posts...</div>
 
 <script>
-    fetch("/api/content")
-        .then(res => res.json())
-        .then(data => {
+    async function loadPosts() {
+        try {
+            const response = await fetch("/api/content");
+            const posts = await response.json();
+
             const container = document.getElementById("posts");
             container.innerHTML = "";
 
-            if (data.length === 0) {
+            if (posts.length === 0) {
                 container.innerHTML = "<p>No posts yet</p>";
                 return;
             }
 
-            data.forEach(post => {
+            posts.forEach(post => {
                 const div = document.createElement("div");
                 div.className = "post";
+
                 div.innerHTML = `
-                <div class="title">${post.title}</div>
-                <p>${post.preview || ""}</p>
-            `;
+                    <h3>${post.title}</h3>
+                    <p>${post.preview || ""}</p>
+                    <div class="meta">
+                        Category: ${post.category || "—"} |
+                        Language: ${post.language || "—"}
+                    </div>
+                `;
+
                 container.appendChild(div);
             });
-        })
-        .catch(() => {
-            document.getElementById("posts").innerText =
-                "Error loading posts";
-        });
+
+        } catch (error) {
+            document.getElementById("posts").innerHTML =
+                "<p>Failed to load posts</p>";
+        }
+    }
+
+    loadPosts();
 </script>
 
 </body>
