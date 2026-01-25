@@ -6,19 +6,15 @@ const path = require("path");
 const app = express();
 const PORT = 3000;
 
-// middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 👉 подключаем static
 app.use(express.static(path.join(__dirname, "../public")));
 
-// test route
 app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
 });
 
-// content route (временно)
 app.get("/api/content", async (req, res) => {
     try {
         const Content = mongoose.connection.db.collection("content");
@@ -29,7 +25,6 @@ app.get("/api/content", async (req, res) => {
     }
 });
 
-// DB connect
 mongoose
     .connect(process.env.MONGO_URI)
     .then(() => {
