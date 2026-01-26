@@ -14,7 +14,6 @@ const Follow = require('./models/Follow');
 const app = express();
 const publicPath = path.join(__dirname, '..', 'public');
 
-// Настройка хранилища для аватарок
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, path.join(publicPath, 'uploads', 'avatars')),
     filename: (req, file, cb) => cb(null, 'avatar-' + Date.now() + path.extname(file.originalname))
@@ -31,62 +30,65 @@ app.use('/api/auth', authRoutes);
 app.post('/api/users/upload-avatar', upload.single('avatar'), async (req, res) => {
     try {
         const { userId } = req.body;
-        if (!req.file) return res.status(400).json({ error: "Файл не выбран" });
-
         const avatarUrl = `/uploads/avatars/${req.file.filename}`;
         const user = await User.findByIdAndUpdate(userId, { avatarUrl }, { new: true }).select('-passwordHash');
         res.json({ message: "Аватарка загружена!", user });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- 2. СОЗДАНИЕ ПОСТА ---
+// --- 2. СОЗДАНИЕ ПОСТА (ИСПРАВЛЕННЫЙ ПРИЕМ ДАННЫХ) ---
 app.post('/api/content', async (req, res) => {
     try {
+        // Логируем ВЕСЬ пришедший объект, чтобы увидеть ключи
+        console.log("--- ПОЛУЧЕН НОВЫЙ ПОСТ ---");
+        console.log("Данные из тела запроса:", req.body);
+
         const { title, preview, body, category, tags, userId, type } = req.body;
+
         const newPost = new Content({
-            type: type || 'video', // Соответствуем твоей коллекции
-            title,
-            preview,
-            body,
-            category: category || 'Other',
+            type: type || 'video',
+            title: title,
+            preview: preview,
+            body: body,
+            // Явная проверка: если category есть в req.body, берем её
+            category: category ? category : 'Other',
             tags: tags || [],
             authorId: userId,
             likes: 0,
             likedBy: [],
             stats: { views: 0, commentsCount: 0 }
         });
-        await newPost.save();
-        res.status(201).json(newPost);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+
+        const savedPost = await newPost.save();
+        console.log("СОХРАНЕНО В БАЗУ:", savedPost);
+
+        res.status(201).json(savedPost);
+    } catch (err) {
+        console.error("ОШИБКА СОЗДАНИЯ:", err.message);
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// --- 3. ПОЛУЧЕНИЕ ЛЕНТЫ (С КАТЕГОРИЯМИ И УМНОЙ СОРТИРОВКОЙ) ---
+// --- 3. ПОЛУЧЕНИЕ ЛЕНТЫ ---
 app.get('/api/content', async (req, res) => {
     try {
         const { userId, category } = req.query;
         let query = {};
 
-        // Фильтр по категории, если она выбрана и это не "All"
         if (category && category !== 'All') {
             query.category = category;
         }
 
-        // Базовый поиск всех постов по фильтру + сортировка по новизне
         let posts = await Content.find(query)
             .populate('authorId', 'username')
             .sort({ createdAt: -1 })
             .lean();
 
-        // Умная сортировка по интересам пользователя
         if (userId && userId !== 'undefined') {
             const user = await User.findById(userId);
             if (user && user.interests && user.interests.length > 0) {
-                const matchedPosts = posts.filter(post =>
-                    post.tags.some(tag => user.interests.includes(tag))
-                );
-                const otherPosts = posts.filter(post =>
-                    !post.tags.some(tag => user.interests.includes(tag))
-                );
+                const matchedPosts = posts.filter(post => post.tags.some(tag => user.interests.includes(tag)));
+                const otherPosts = posts.filter(post => !post.tags.some(tag => user.interests.includes(tag)));
                 posts = [...matchedPosts, ...otherPosts];
             }
         }
@@ -108,7 +110,6 @@ app.post('/api/content/:id/like', async (req, res) => {
         } else {
             post.likedBy.push(userId);
             post.likes += 1;
-            // Уведомление автору (если это не лайк самому себе)
             if (post.authorId.toString() !== userId.toString()) {
                 await new Notification({
                     userId: post.authorId,
@@ -124,17 +125,14 @@ app.post('/api/content/:id/like', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- 5. УВЕДОМЛЕНИЯ ---
+// --- 5. УВЕДОМЛЕНИЯ И ПРОФИЛЬ ---
 app.get('/api/notifications/:userId', async (req, res) => {
     try {
-        const notes = await Notification.find({ userId: req.params.userId })
-            .populate('fromUserId', 'username')
-            .sort({ createdAt: -1 });
+        const notes = await Notification.find({ userId: req.params.userId }).populate('fromUserId', 'username').sort({ createdAt: -1 });
         res.json(notes);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- 6. ПРОФИЛЬ И ЮЗЕРЫ ---
 app.put('/api/users/update', async (req, res) => {
     try {
         const { userId, interests } = req.body;
@@ -146,16 +144,13 @@ app.put('/api/users/update', async (req, res) => {
 app.get('/api/users/:id', async (req, res) => {
     try {
         const user = await User.findById(req.params.id).select('-passwordHash');
-        if (!user) return res.status(404).json({ error: "Пользователь не найден" });
         res.json(user);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- ЗАПУСК ---
 mongoose.connect(process.env.MONGO_URI)
     .then(() => {
         console.log("MongoDB Connected Successfully");
-        const PORT = process.env.PORT || 3000;
-        app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+        app.listen(process.env.PORT || 3000, () => console.log(`Server: http://localhost:3000`));
     })
-    .catch(err => console.error("MongoDB Connection Error:", err));
+    .catch(err => console.error(err));

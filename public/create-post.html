@@ -63,9 +63,9 @@
 
 <script>
   async function publish() {
-    const title = document.getElementById('post-title').value;
-    const preview = document.getElementById('post-preview').value;
-    const body = document.getElementById('post-body').value;
+    const title = document.getElementById('post-title').value.trim();
+    const preview = document.getElementById('post-preview').value.trim();
+    const body = document.getElementById('post-body').value.trim();
     const category = document.getElementById('post-category').value;
     const tags = Array.from(document.querySelectorAll('.tag-checkbox:checked')).map(cb => cb.value);
 
@@ -79,26 +79,32 @@
     btn.disabled = true;
     btn.innerText = "Сохранение...";
 
+    // Объект данных для проверки
+    const postData = {
+      type: "video",
+      title,
+      preview,
+      body,
+      category, // Проверь, что тут не "Other"
+      tags,
+      userId: user.id || user._id
+    };
+
+    console.log("Отправляем данные:", postData);
+
     try {
       const res = await fetch('/api/content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: "video", // Указываем video, чтобы база приняла пост
-          title,
-          preview,
-          body,
-          category,
-          tags,
-          userId: user.id || user._id
-        })
+        body: JSON.stringify(postData)
       });
 
       if (res.ok) {
+        alert("Пост создан в категории: " + category);
         window.location.href = '/';
       } else {
         const err = await res.json();
-        alert("Ошибка: " + err.error);
+        alert("Ошибка сервера: " + err.error);
       }
     } catch (e) {
       alert("Ошибка сети");

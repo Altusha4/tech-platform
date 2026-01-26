@@ -7,7 +7,7 @@ const contentSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['video', 'post'],
+        enum: ['video', 'post', 'article'], // Добавили article на всякий случай
         required: true
     },
     authorId: {
@@ -18,15 +18,23 @@ const contentSchema = new mongoose.Schema({
     preview: {
         type: String
     },
-    url: {
+    // Добавляем поле body (в нем будет храниться ссылка или текст)
+    body: {
         type: String
     },
+    // Добавляем поле category (теперь оно будет сохраняться!)
+    category: {
+        type: String,
+        default: 'Other'
+    },
+    // Добавляем массив тегов для умной ленты
+    tags: [{
+        type: String
+    }],
     likes: {
         type: Number,
         default: 0
     },
-    // МАССИВ ДЛЯ УМНЫХ ЛАЙКОВ:
-    // Здесь мы храним ID пользователей, чтобы один человек не мог лайкнуть дважды
     likedBy: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
@@ -37,5 +45,4 @@ const contentSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-// Экспортируем модель. Третий аргумент 'content' — это имя коллекции в Atlas
 module.exports = mongoose.model('Content', contentSchema, 'content');
