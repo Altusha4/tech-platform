@@ -48,6 +48,10 @@
         .category-tag { font-size: 10px; background: #eee; padding: 2px 8px; border-radius: 4px; color: #666; text-transform: uppercase; }
         .type-tag { font-size: 11px; font-weight: bold; text-transform: uppercase; color: var(--primary); }
 
+        /* Стили для видео */
+        .video-container { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 15px; background: #000; aspect-ratio: 16/9; }
+        .video-container iframe { width: 100%; height: 100%; border: none; }
+
         .interest-tag {
             display: inline-flex; background: #e8f2ff; color: var(--primary);
             padding: 4px 10px; border-radius: 6px; font-size: 12px; margin-right: 8px; margin-top: 10px;
@@ -87,6 +91,14 @@
 
 <script>
     let currentCategory = 'All';
+
+    // Функция для преобразования ссылки YouTube в Embed-формат
+    function getYouTubeEmbedUrl(url) {
+        if (!url) return null;
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
+    }
 
     function renderUserHeader(user) {
         const authSection = document.getElementById('auth-section');
@@ -135,7 +147,6 @@
         const user = userData ? JSON.parse(userData) : null;
         const userId = user ? (user.id || user._id) : '';
 
-        // Отправляем userId для рекомендаций и category для фильтра
         const response = await fetch(`/api/content?userId=${userId}&category=${currentCategory}`);
         const data = await response.json();
         const feedElement = document.getElementById('feed');
@@ -143,6 +154,9 @@
         feedElement.innerHTML = data.map(item => {
             const isRec = user && item.tags && item.tags.some(tag => user.interests.includes(tag));
             const userHasLiked = user && item.likedBy && item.likedBy.includes(userId);
+
+            // Проверяем наличие видео ссылки
+            const embedUrl = item.type === 'video' ? getYouTubeEmbedUrl(item.body) : null;
 
             return `
             <div class="card ${isRec ? 'recommended' : ''}">
@@ -152,9 +166,17 @@
                     <div class="category-tag">${item.category || 'Other'}</div>
                 </div>
                 <h3 style="margin: 5px 0 10px 0;">${item.title}</h3>
-                <p style="color: #666; font-size: 14px; line-height: 1.5; flex-grow: 1;">
-                    ${item.preview || (item.content ? item.content.substring(0, 100) + '...' : '')}
-                </p>
+
+                <div class="card-body-content">
+                    ${embedUrl
+                ? `<div class="video-container">
+                             <iframe src="${embedUrl}" allowfullscreen></iframe>
+                           </div>`
+                : `<p style="color: #666; font-size: 14px; line-height: 1.5; flex-grow: 1;">
+                             ${item.preview || (item.content ? item.content.substring(0, 100) + '...' : 'Нет описания')}
+                           </p>`
+            }
+                </div>
 
                 <div>
                     ${(item.tags || []).map(t => `<span class="interest-tag">#${t}</span>`).join('')}
