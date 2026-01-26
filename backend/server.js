@@ -95,6 +95,22 @@ app.put('/api/users/update', async (req, res) => {
     }
 });
 
+// Получение свежих данных пользователя из БД по его ID
+app.get('/api/users/:id', async (req, res) => {
+    try {
+        // Ищем пользователя и исключаем пароль из результата
+        const user = await User.findById(req.params.id).select('-passwordHash');
+
+        if (!user) {
+            return res.status(404).json({ error: "Пользователь не найден" });
+        }
+
+        res.json(user);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 mongoose.connect(process.env.MONGO_URI)
     .then(() => {
         console.log("MongoDB Connected & Auth Routes Ready");
