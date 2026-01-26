@@ -59,12 +59,36 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(publicPath, 'index.html'));
 });
 
-// Получение данных постов
 app.get('/api/content', async (req, res) => {
     try {
-        const posts = await Content.find().populate('authorId', 'username').sort({ createdAt: -1 });
+        const { userId } = req.query;
+        let posts = await Content.find().populate('authorId', 'username').lean();
+
+        if (userId && userId !== 'undefined') {
+            const user = await User.findById(userId);
+
+            if (user && user.interests && user.interests.length > 0) {
+                // Сначала фильтруем: создаем список постов, которые СОВПАДАЮТ
+                const matchedPosts = posts.filter(post =>
+                    post.tags.some(tag => user.interests.includes(tag))
+                );
+
+                // Затем список постов, которые НЕ СОВПАДАЮТ
+                const otherPosts = posts.filter(post =>
+                    !post.tags.some(tag => user.interests.includes(tag))
+                );
+
+                // Склеиваем их: подходящие вверху, остальные внизу
+                posts = [...matchedPosts, ...otherPosts];
+
+                // Если хочешь ВООБЩЕ скрыть неинтересные, просто закомментируй строку выше
+                // posts = matchedPosts;
+            }
+        }
         res.json(posts);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Получение уведомлений

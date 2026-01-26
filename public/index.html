@@ -7,18 +7,51 @@
         :root { --primary: #0071e3; --bg: #f5f5f7; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; }
 
-        /* Стили для шапки */
         .navbar { background: white; padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 1000; }
         .logo { font-size: 20px; font-weight: bold; color: var(--primary); text-decoration: none; }
         .user-menu { display: flex; align-items: center; gap: 20px; }
-        .welcome-text { font-weight: 500; color: #333; }
-        .btn-logout { background: #ff3b30; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; }
-        .btn-login { background: var(--primary); color: white; text-decoration: none; padding: 8px 15px; border-radius: 6px; }
 
         .container { max-width: 1100px; margin: 40px auto; padding: 0 20px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; }
-        .card { background: white; border-radius: 18px; padding: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+
+        .card {
+            background: white;
+            border-radius: 18px;
+            padding: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            transition: transform 0.2s, border 0.3s;
+            position: relative;
+            border: 2px solid transparent;
+        }
+        /* Стиль для рекомендованного контента */
+        .card.recommended {
+            border: 2px solid var(--primary);
+            background: #fbfdff;
+        }
+        .rec-badge {
+            position: absolute;
+            top: -10px;
+            right: 20px;
+            background: var(--primary);
+            color: white;
+            font-size: 10px;
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
         .type-tag { font-size: 11px; font-weight: bold; text-transform: uppercase; color: var(--primary); }
+        .interest-tag {
+            display: inline-block;
+            background: #e8f2ff;
+            color: var(--primary);
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: 11px;
+            margin-right: 5px;
+            margin-top: 10px;
+        }
+
         .like-btn {
             background: #fff;
             border: 1px solid #ff3b30;
@@ -29,8 +62,9 @@
             font-weight: bold;
             transition: 0.2s;
         }
-        .like-btn:hover {
-            background: #fff5f5;
+        .like-btn.active {
+            background: #ff3b30;
+            color: #fff;
         }
     </style>
 </head>
@@ -38,8 +72,7 @@
 
 <nav class="navbar">
     <a href="/" class="logo">TechPlatform</a>
-    <div id="auth-section" class="user-menu">
-    </div>
+    <div id="auth-section" class="user-menu"></div>
 </nav>
 
 <div class="container">
@@ -48,7 +81,6 @@
 </div>
 
 <script>
-    // Функция отрисовки шапки (вынесена отдельно для повторного использования)
     function renderUserHeader(user) {
         const authSection = document.getElementById('auth-section');
         if (!authSection) return;
@@ -63,7 +95,6 @@
     `;
     }
 
-    // Обновленная функция проверки авторизации с фоновой синхронизацией
     async function checkAuth() {
         const userData = localStorage.getItem('user');
         if (!userData) {
@@ -72,74 +103,77 @@
         }
 
         let user = JSON.parse(userData);
-
-        // 1. Сразу рисуем данные из localStorage (чтобы юзер не ждал)
         renderUserHeader(user);
 
-        // 2. В ФОНЕ идем в базу данных за актуальной информацией
         try {
             const userId = user.id || user._id;
             const response = await fetch(`/api/users/${userId}`);
 
             if (response.ok) {
                 const freshUser = await response.json();
-
-                // Сравниваем: если данные в БД отличаются от тех, что в браузере
                 if (JSON.stringify(freshUser.interests) !== JSON.stringify(user.interests) ||
                     freshUser.username !== user.username) {
 
-                    console.log("Синхронизация: данные обновлены из MongoDB");
-
-                    // Обновляем localStorage новой версией
                     const updatedData = { ...freshUser, id: freshUser._id };
                     localStorage.setItem('user', JSON.stringify(updatedData));
-
-                    // Перерисовываем шапку свежими данными
                     renderUserHeader(updatedData);
+                    // Если интересы изменились, пересобираем ленту
+                    fetchFeed();
                 }
             }
         } catch (err) {
-            console.warn("Фоновая синхронизация не удалась (возможно, нет сети)");
+            console.warn("Синхронизация не удалась");
         }
     }
 
     function logout() {
-        localStorage.removeItem('token');
         localStorage.removeItem('user');
-        window.location.reload();
+        window.location.href = '/login.html';
     }
 
-    // 2. ОБНОВЛЕННАЯ ЗАГРУЗКА КОНТЕНТА (с кнопкой лайка)
+    // ОБНОВЛЕННАЯ ФУНКЦИЯ: Теперь запрашивает персонализированную ленту
     async function fetchFeed() {
-        const response = await fetch('/api/content');
+        const userData = localStorage.getItem('user');
+        const user = userData ? JSON.parse(userData) : null;
+        const userId = user ? (user.id || user._id) : '';
+
+        // Отправляем userId серверу для сортировки по интересам
+        const response = await fetch(`/api/content?userId=${userId}`);
         const data = await response.json();
         const feedElement = document.getElementById('feed');
 
-        feedElement.innerHTML = data.map(item => `
-            <div class="card">
+        feedElement.innerHTML = data.map(item => {
+            // Проверяем, совпадает ли хоть один тег поста с интересами юзера
+            const isRec = user && item.tags && item.tags.some(tag => user.interests.includes(tag));
+            const userHasLiked = user && item.likedBy && item.likedBy.includes(userId);
+
+            return `
+            <div class="card ${isRec ? 'recommended' : ''}">
+                ${isRec ? '<div class="rec-badge">✨ РЕКОМЕНДУЕМ</div>' : ''}
                 <div class="type-tag">${item.type === 'video' ? '🎥 Видео' : '📄 Статья'}</div>
                 <h3>${item.title}</h3>
-                <p style="color: #666; font-size: 14px;">${item.preview}</p>
+                <p style="color: #666; font-size: 14px;">${item.preview || item.content.substring(0, 100) + '...'}</p>
+
+                <div class="tags-container">
+                    ${(item.tags || []).map(t => `<span class="interest-tag">#${t}</span>`).join('')}
+                </div>
+
                 <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
                     <div style="font-size: 13px; color: #888;">
                         👤 ${item.authorId?.username || 'Автор'}
                     </div>
-                    <button onclick="handleLike('${item._id}')" class="like-btn">
+                    <button onclick="handleLike('${item._id}')" class="like-btn ${userHasLiked ? 'active' : ''}">
                         ❤️ <span id="likes-count-${item._id}">${item.likes || 0}</span>
                     </button>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
-    // 3. НОВАЯ ФУНКЦИЯ ОБРАБОТКИ ЛАЙКА
     async function handleLike(contentId) {
         const storedUser = localStorage.getItem('user');
-        if (!storedUser) {
-            alert("Пожалуйста, войдите!");
-            return;
-        }
-
+        if (!storedUser) return;
         const user = JSON.parse(storedUser);
         const userId = user.id || user._id;
 
@@ -151,16 +185,14 @@
 
         if (res.ok) {
             const data = await res.json();
-
             const countSpan = document.getElementById(`likes-count-${contentId}`);
             countSpan.innerText = data.likes;
-
             const btn = countSpan.parentElement;
-            btn.style.background = data.isLiked ? "#ff3b30" : "#fff";
-            btn.style.color = data.isLiked ? "#fff" : "#ff3b30";
+            btn.classList.toggle('active', data.isLiked);
         }
     }
 
+    // Запуск
     checkAuth();
     fetchFeed();
 </script>
