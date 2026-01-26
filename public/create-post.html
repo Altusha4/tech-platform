@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Создать публикацию</title>
+  <style>
+    :root { --primary: #0071e3; --bg: #f5f5f7; }
+    body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; }
+    .editor-container { max-width: 700px; margin: 40px auto; background: white; padding: 40px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+    .back-link { text-decoration: none; color: var(--primary); font-weight: 500; display: inline-block; margin-bottom: 20px; }
+
+    label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 14px; color: #333; }
+    input, textarea, select {
+      width: 100%; padding: 12px; margin-bottom: 20px;
+      border: 1px solid #ddd; border-radius: 10px;
+      font-size: 16px; box-sizing: border-box; font-family: inherit;
+    }
+    textarea { height: 80px; resize: none; }
+
+    .tag-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px; }
+    .tag-checkbox { display: none; }
+    .tag-label { padding: 8px 16px; border: 1px solid #ddd; border-radius: 20px; cursor: pointer; font-size: 13px; transition: 0.2s; background: #fff; }
+    .tag-checkbox:checked + .tag-label { background: var(--primary); color: white; border-color: var(--primary); }
+
+    .publish-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 18px; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<div class="editor-container">
+  <a href="/" class="back-link">← На главную</a>
+  <h1>Новая публикация 🚀</h1>
+
+  <label>Заголовок (title)</label>
+  <input type="text" id="post-title" placeholder="Напр: MongoDB Crash Course 2026">
+
+  <label>Краткое превью (preview)</label>
+  <input type="text" id="post-preview" placeholder="Краткое описание для карточки">
+
+  <label>Категория (category)</label>
+  <select id="post-category">
+    <option value="Programming">Programming</option>
+    <option value="Gadgets">Gadgets</option>
+    <option value="Design">Design</option>
+    <option value="Other">Other</option>
+  </select>
+
+  <label>Ссылка или контент (body)</label>
+  <input type="text" id="post-body" placeholder="URL видео с YouTube или текст">
+
+  <label>Теги (tags)</label>
+  <div class="tag-group">
+    <input type="checkbox" id="t1" class="tag-checkbox" value="mongodb"><label for="t1" class="tag-label">mongodb</label>
+    <input type="checkbox" id="t2" class="tag-checkbox" value="javascript"><label for="t2" class="tag-label">javascript</label>
+    <input type="checkbox" id="t3" class="tag-checkbox" value="node"><label for="t3" class="tag-label">node</label>
+    <input type="checkbox" id="t4" class="tag-checkbox" value="apple"><label for="t4" class="tag-label">apple</label>
+    <input type="checkbox" id="t5" class="tag-checkbox" value="iphone"><label for="t5" class="tag-label">iphone</label>
+    <input type="checkbox" id="t6" class="tag-checkbox" value="tech"><label for="t6" class="tag-label">tech</label>
+  </div>
+
+  <button onclick="publish()" id="publish-btn" class="publish-btn">Опубликовать</button>
+</div>
+
+<script>
+  async function publish() {
+    const title = document.getElementById('post-title').value;
+    const preview = document.getElementById('post-preview').value;
+    const body = document.getElementById('post-body').value;
+    const category = document.getElementById('post-category').value;
+    const tags = Array.from(document.querySelectorAll('.tag-checkbox:checked')).map(cb => cb.value);
+
+    const userData = localStorage.getItem('user');
+    if (!userData) return alert("Войдите в систему");
+    const user = JSON.parse(userData);
+
+    if(!title || !body) return alert("Заголовок и ссылка обязательны");
+
+    const btn = document.getElementById('publish-btn');
+    btn.disabled = true;
+    btn.innerText = "Сохранение...";
+
+    try {
+      const res = await fetch('/api/content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: "video", // Указываем video, чтобы база приняла пост
+          title,
+          preview,
+          body,
+          category,
+          tags,
+          userId: user.id || user._id
+        })
+      });
+
+      if (res.ok) {
+        window.location.href = '/';
+      } else {
+        const err = await res.json();
+        alert("Ошибка: " + err.error);
+      }
+    } catch (e) {
+      alert("Ошибка сети");
+    } finally {
+      btn.disabled = false;
+      btn.innerText = "Опубликовать";
+    }
+  }
+</script>
+</body>
+</html>

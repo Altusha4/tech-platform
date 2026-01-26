@@ -14,58 +14,50 @@
         .container { max-width: 1100px; margin: 40px auto; padding: 0 20px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; }
 
-        .card {
-            background: white;
-            border-radius: 18px;
-            padding: 24px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            transition: transform 0.2s, border 0.3s;
-            position: relative;
-            border: 2px solid transparent;
+        /* Категории */
+        .category-bar { display: flex; gap: 10px; margin-bottom: 25px; overflow-x: auto; padding-bottom: 10px; }
+        .cat-btn {
+            padding: 8px 20px; border-radius: 20px; border: 1px solid #ddd;
+            background: white; cursor: pointer; font-weight: 500; transition: 0.2s; white-space: nowrap;
         }
-        /* Стиль для рекомендованного контента */
-        .card.recommended {
-            border: 2px solid var(--primary);
-            background: #fbfdff;
+        .cat-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .post-stub {
+            background: white; border-radius: 18px; padding: 15px 24px; display: flex;
+            align-items: center; gap: 15px; margin-bottom: 40px; cursor: pointer;
+            border: 1px solid #e1e1e1; transition: background 0.2s;
         }
-        .rec-badge {
-            position: absolute;
-            top: -10px;
-            right: 20px;
-            background: var(--primary);
-            color: white;
-            font-size: 10px;
-            padding: 4px 10px;
-            border-radius: 10px;
-            font-weight: bold;
+        .post-stub:hover { background: #fafafa; }
+        .post-stub-input {
+            background: #f0f2f5; flex-grow: 1; padding: 12px 20px;
+            border-radius: 25px; color: #65676b; font-size: 16px;
         }
 
+        .card {
+            background: white; border-radius: 18px; padding: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: transform 0.2s;
+            position: relative; border: 2px solid transparent; display: flex; flex-direction: column;
+        }
+        .card.recommended { border: 2px solid var(--primary); background: #fbfdff; }
+        .rec-badge {
+            position: absolute; top: -10px; right: 20px; background: var(--primary);
+            color: white; font-size: 10px; padding: 4px 10px; border-radius: 10px; font-weight: bold;
+        }
+
+        .card-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .category-tag { font-size: 10px; background: #eee; padding: 2px 8px; border-radius: 4px; color: #666; text-transform: uppercase; }
         .type-tag { font-size: 11px; font-weight: bold; text-transform: uppercase; color: var(--primary); }
+
         .interest-tag {
-            display: inline-block;
-            background: #e8f2ff;
-            color: var(--primary);
-            padding: 3px 8px;
-            border-radius: 5px;
-            font-size: 11px;
-            margin-right: 5px;
-            margin-top: 10px;
+            display: inline-flex; background: #e8f2ff; color: var(--primary);
+            padding: 4px 10px; border-radius: 6px; font-size: 12px; margin-right: 8px; margin-top: 10px;
         }
 
         .like-btn {
-            background: #fff;
-            border: 1px solid #ff3b30;
-            color: #ff3b30;
-            padding: 6px 12px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.2s;
+            background: #fff; border: 1px solid #ff3b30; color: #ff3b30;
+            padding: 6px 12px; border-radius: 20px; cursor: pointer; font-weight: bold; transition: 0.2s;
         }
-        .like-btn.active {
-            background: #ff3b30;
-            color: #fff;
-        }
+        .like-btn.active { background: #ff3b30; color: #fff; }
     </style>
 </head>
 <body>
@@ -76,58 +68,54 @@
 </nav>
 
 <div class="container">
+    <div class="post-stub" onclick="window.location.href='/create-post.html'">
+        <div id="mini-avatar-placeholder"></div>
+        <div class="post-stub-input">Что у вас нового?</div>
+    </div>
+
     <h1 id="page-title">Инновации в IT 🚀</h1>
+
+    <div class="category-bar">
+        <button class="cat-btn active" onclick="setCategory('All', this)">Все</button>
+        <button class="cat-btn" onclick="setCategory('Programming', this)">Programming</button>
+        <button class="cat-btn" onclick="setCategory('Gadgets', this)">Gadgets</button>
+        <button class="cat-btn" onclick="setCategory('Design', this)">Design</button>
+    </div>
+
     <div id="feed" class="grid"></div>
 </div>
 
 <script>
+    let currentCategory = 'All';
+
     function renderUserHeader(user) {
         const authSection = document.getElementById('auth-section');
-        if (!authSection) return;
+        const miniAvatar = document.getElementById('mini-avatar-placeholder');
 
-        authSection.innerHTML = `
-    <div style="display: flex; align-items: center; gap: 20px;">
-        <a href="/notifications.html" style="text-decoration: none; font-size: 20px;" title="Уведомления">
-            🔔
-        </a>
-        <a href="/profile.html" style="text-decoration: none; color: inherit; font-weight: 500; display: flex; align-items: center; gap: 8px;">
-            ${user.avatarUrl ? `<img src="${user.avatarUrl}" style="width:30px; height:30px; border-radius:50%; object-fit:cover;">` : '👤'}
-            ${user.username}
-        </a>
-        <button onclick="logout()" style="background: none; border: 1px solid #ff3b30; color: #ff3b30; padding: 5px 10px; border-radius: 5px; cursor: pointer;">Выйти</button>
-    </div>
-    `;
+        if (miniAvatar) {
+            miniAvatar.innerHTML = user.avatarUrl
+                ? `<img src="${user.avatarUrl}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">`
+                : `<div style="width:40px; height:40px; border-radius:50%; background:#ddd; display:flex; align-items:center; justify-content:center;">👤</div>`;
+        }
+
+        if (authSection) {
+            authSection.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <a href="/notifications.html" style="text-decoration: none; font-size: 20px;">🔔</a>
+                <a href="/profile.html" style="text-decoration: none; color: inherit; font-weight: 500; display: flex; align-items: center; gap: 8px;">
+                    ${user.avatarUrl ? `<img src="${user.avatarUrl}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border: 1px solid #ddd;">` : '👤'}
+                    ${user.username}
+                </a>
+                <button onclick="logout()" style="background: none; border: 1px solid #ff3b30; color: #ff3b30; padding: 5px 10px; border-radius: 5px; cursor: pointer;">Выйти</button>
+            </div>`;
+        }
     }
 
     async function checkAuth() {
         const userData = localStorage.getItem('user');
-        if (!userData) {
-            window.location.href = '/login.html';
-            return;
-        }
-
+        if (!userData) { window.location.href = '/login.html'; return; }
         let user = JSON.parse(userData);
         renderUserHeader(user);
-
-        try {
-            const userId = user.id || user._id;
-            const response = await fetch(`/api/users/${userId}`);
-
-            if (response.ok) {
-                const freshUser = await response.json();
-                if (JSON.stringify(freshUser.interests) !== JSON.stringify(user.interests) ||
-                    freshUser.username !== user.username) {
-
-                    const updatedData = { ...freshUser, id: freshUser._id };
-                    localStorage.setItem('user', JSON.stringify(updatedData));
-                    renderUserHeader(updatedData);
-                    // Если интересы изменились, пересобираем ленту
-                    fetchFeed();
-                }
-            }
-        } catch (err) {
-            console.warn("Синхронизация не удалась");
-        }
     }
 
     function logout() {
@@ -135,43 +123,52 @@
         window.location.href = '/login.html';
     }
 
-    // ОБНОВЛЕННАЯ ФУНКЦИЯ: Теперь запрашивает персонализированную ленту
+    function setCategory(cat, btn) {
+        currentCategory = cat;
+        document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        fetchFeed();
+    }
+
     async function fetchFeed() {
         const userData = localStorage.getItem('user');
         const user = userData ? JSON.parse(userData) : null;
         const userId = user ? (user.id || user._id) : '';
 
-        // Отправляем userId серверу для сортировки по интересам
-        const response = await fetch(`/api/content?userId=${userId}`);
+        // Отправляем userId для рекомендаций и category для фильтра
+        const response = await fetch(`/api/content?userId=${userId}&category=${currentCategory}`);
         const data = await response.json();
         const feedElement = document.getElementById('feed');
 
         feedElement.innerHTML = data.map(item => {
-            // Проверяем, совпадает ли хоть один тег поста с интересами юзера
             const isRec = user && item.tags && item.tags.some(tag => user.interests.includes(tag));
             const userHasLiked = user && item.likedBy && item.likedBy.includes(userId);
 
             return `
             <div class="card ${isRec ? 'recommended' : ''}">
                 ${isRec ? '<div class="rec-badge">✨ РЕКОМЕНДУЕМ</div>' : ''}
-                <div class="type-tag">${item.type === 'video' ? '🎥 Видео' : '📄 Статья'}</div>
-                <h3>${item.title}</h3>
-                <p style="color: #666; font-size: 14px;">${item.preview || item.content.substring(0, 100) + '...'}</p>
+                <div class="card-meta">
+                    <div class="type-tag">${item.type === 'video' ? '🎥 Видео' : '📄 Статья'}</div>
+                    <div class="category-tag">${item.category || 'Other'}</div>
+                </div>
+                <h3 style="margin: 5px 0 10px 0;">${item.title}</h3>
+                <p style="color: #666; font-size: 14px; line-height: 1.5; flex-grow: 1;">
+                    ${item.preview || (item.content ? item.content.substring(0, 100) + '...' : '')}
+                </p>
 
-                <div class="tags-container">
+                <div>
                     ${(item.tags || []).map(t => `<span class="interest-tag">#${t}</span>`).join('')}
                 </div>
 
-                <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 15px;">
                     <div style="font-size: 13px; color: #888;">
-                        👤 ${item.authorId?.username || 'Автор'}
+                        👤 <strong>${item.authorId?.username || 'Автор'}</strong>
                     </div>
                     <button onclick="handleLike('${item._id}')" class="like-btn ${userHasLiked ? 'active' : ''}">
                         ❤️ <span id="likes-count-${item._id}">${item.likes || 0}</span>
                     </button>
                 </div>
-            </div>
-            `;
+            </div>`;
         }).join('');
     }
 
@@ -191,12 +188,10 @@
             const data = await res.json();
             const countSpan = document.getElementById(`likes-count-${contentId}`);
             countSpan.innerText = data.likes;
-            const btn = countSpan.parentElement;
-            btn.classList.toggle('active', data.isLiked);
+            countSpan.parentElement.classList.toggle('active', data.isLiked);
         }
     }
 
-    // Запуск
     checkAuth();
     fetchFeed();
 </script>
