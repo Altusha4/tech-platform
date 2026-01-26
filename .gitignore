@@ -18,3 +18,4 @@ build/
 .vscode/
 *.iml
 dump/
+public/uploads

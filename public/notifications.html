@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Уведомления</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; background: #f5f5f7; margin: 0; padding: 20px; }
+    .container { max-width: 600px; margin: 40px auto; }
+    .notification-card {
+      background: white;
+      padding: 15px 20px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    .icon { font-size: 20px; }
+    .time { color: #888; font-size: 12px; margin-left: auto; }
+    .user-name { font-weight: bold; color: #0071e3; }
+    .empty { text-align: center; color: #666; margin-top: 50px; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <a href="/" style="text-decoration: none; color: #0071e3;">← На главную</a>
+  <h1>Уведомления 🔔</h1>
+  <div id="notifications-list">Загрузка...</div>
+</div>
+
+<script>
+  async function loadNotifications() {
+    const userData = localStorage.getItem('user');
+    if (!userData) return;
+    const user = JSON.parse(userData);
+    const userId = user.id || user._id;
+
+    try {
+      const res = await fetch(`/api/notifications/${userId}`);
+      const notes = await res.json();
+      const list = document.getElementById('notifications-list');
+
+      if (notes.length === 0) {
+        list.innerHTML = '<div class="empty">У вас пока нет новых уведомлений</div>';
+        return;
+      }
+
+      list.innerHTML = notes.map(n => `
+                <div class="notification-card">
+                    <div class="icon">${n.type === 'like' ? '❤️' : '👤'}</div>
+                    <div>
+                        <span class="user-name">${n.fromUserId?.username || 'Кто-то'}</span>
+                        ${n.message}
+                    </div>
+                    <div class="time">${new Date(n.createdAt).toLocaleDateString()}</div>
+                </div>
+            `).join('');
+    } catch (err) {
+      console.error("Ошибка загрузки:", err);
+    }
+  }
+
+  loadNotifications();
+</script>
+</body>
+</html>
