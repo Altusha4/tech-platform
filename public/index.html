@@ -48,18 +48,58 @@
 </div>
 
 <script>
-    // 1. Проверка авторизации
-    function checkAuth() {
+    // Функция отрисовки шапки (вынесена отдельно для повторного использования)
+    function renderUserHeader(user) {
         const authSection = document.getElementById('auth-section');
+        if (!authSection) return;
+
+        authSection.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <a href="/profile.html" style="text-decoration: none; color: inherit; font-weight: 500;">
+                Привет, 👋 ${user.username}!
+            </a>
+            <button onclick="logout()" style="background: none; border: 1px solid #ff3b30; color: #ff3b30; padding: 5px 10px; border-radius: 5px; cursor: pointer;">Выйти</button>
+        </div>
+    `;
+    }
+
+    // Обновленная функция проверки авторизации с фоновой синхронизацией
+    async function checkAuth() {
         const userData = localStorage.getItem('user');
-        if (userData) {
-            const user = JSON.parse(userData);
-            authSection.innerHTML = `
-                <a href="/profile.html" style="text-decoration: none; color: inherit; font-weight: 500;">Привет, 👋 ${user.username}!</a>
-                <button class="btn-logout" onclick="logout()">Выйти</button>
-            `;
-        } else {
-            authSection.innerHTML = `<a href="/login.html" class="btn-login">Войти</a>`;
+        if (!userData) {
+            window.location.href = '/login.html';
+            return;
+        }
+
+        let user = JSON.parse(userData);
+
+        // 1. Сразу рисуем данные из localStorage (чтобы юзер не ждал)
+        renderUserHeader(user);
+
+        // 2. В ФОНЕ идем в базу данных за актуальной информацией
+        try {
+            const userId = user.id || user._id;
+            const response = await fetch(`/api/users/${userId}`);
+
+            if (response.ok) {
+                const freshUser = await response.json();
+
+                // Сравниваем: если данные в БД отличаются от тех, что в браузере
+                if (JSON.stringify(freshUser.interests) !== JSON.stringify(user.interests) ||
+                    freshUser.username !== user.username) {
+
+                    console.log("Синхронизация: данные обновлены из MongoDB");
+
+                    // Обновляем localStorage новой версией
+                    const updatedData = { ...freshUser, id: freshUser._id };
+                    localStorage.setItem('user', JSON.stringify(updatedData));
+
+                    // Перерисовываем шапку свежими данными
+                    renderUserHeader(updatedData);
+                }
+            }
+        } catch (err) {
+            console.warn("Фоновая синхронизация не удалась (возможно, нет сети)");
         }
     }
 
