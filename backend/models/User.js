@@ -6,6 +6,7 @@ const userSchema = new mongoose.Schema({
     passwordHash: { type: String, required: true },
     role: { type: String, default: 'user' },
     interests: [{ type: String }],
+    avatarUrl: { type: String, default: '' },
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     stats: {
