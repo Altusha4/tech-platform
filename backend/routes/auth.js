@@ -14,11 +14,12 @@ router.post('/register', async (req, res) => {
             username,
             email,
             passwordHash: hashedPassword,
-            interests: interests || []
+            interests: interests || [],
+            stats: { postsCount: 0, totalLikes: 0, totalViews: 0 }
         });
 
         await newUser.save();
-        res.status(201).json({ message: "User created!" });
+        res.status(201).json({ message: "Пользователь создан!" });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -26,18 +27,24 @@ router.post('/register', async (req, res) => {
 
 // Логин
 router.post('/login', async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        const user = await User.findOne({ email });
-        if (!user) return res.status(404).json({ error: "User not found" });
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
 
-        const isMatch = await bcrypt.compare(password, user.passwordHash);
-        if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
+    if (user && await bcrypt.compare(password, user.passwordHash)) {
+        const token = jwt.sign({ id: user._id }, 'SECRET_KEY');
 
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-        res.json({ token, user: { id: user._id, username: user.username } });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.json({
+            token,
+            user: {
+                id: user._id,
+                username: user.username,
+                email: user.email,
+                role: user.role,
+                interests: user.interests
+            }
+        });
+    } else {
+        res.status(401).json({ error: "Неверный логин или пароль" });
     }
 });
 
