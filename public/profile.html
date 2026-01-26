@@ -1,10 +1,59 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>$Title$</title>
+  <title>Мой профиль</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; background: #f5f5f7; margin: 0; padding: 20px; }
+    .profile-card { background: white; max-width: 500px; margin: 50px auto; padding: 30px; border-radius: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+    .avatar { width: 80px; height: 80px; background: #0071e3; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 20px; }
+    h2 { margin: 0; color: #1d1d1f; }
+    .info { margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
+    .interest-tag { display: inline-block; background: #e8f2ff; color: #0071e3; padding: 5px 12px; border-radius: 15px; font-size: 13px; margin: 5px 5px 0 0; font-weight: 500; }
+    .btn-back { display: inline-block; margin-top: 20px; text-decoration: none; color: #0071e3; font-size: 14px; }
+  </style>
 </head>
 <body>
-$END$
+
+<div class="profile-card">
+  <div id="profile-content">Загрузка...</div>
+  <a href="/" class="btn-back">← На главную</a>
+</div>
+
+<script>
+  function renderProfile() {
+    const userData = localStorage.getItem('user');
+    if (!userData) {
+      window.location.href = '/login.html';
+      return;
+    }
+
+    const user = JSON.parse(userData);
+    const container = document.getElementById('profile-content');
+
+    // Генерируем теги интересов
+    const interestsHtml = user.interests && user.interests.length > 0
+            ? user.interests.map(i => `<span class="interest-tag">#${i}</span>`).join('')
+            : '<p style="color: #888;">Интересы не выбраны</p>';
+
+    container.innerHTML = `
+            <div class="avatar">${user.username[0].toUpperCase()}</div>
+            <h2>${user.username}</h2>
+            <p style="color: #666;">${user.email}</p>
+
+            <div class="info">
+                <strong>Мои интересы:</strong><br>
+                <div style="margin-top: 10px;">${interestsHtml}</div>
+            </div>
+
+            <div style="margin-top: 20px; font-size: 13px; color: #888;">
+                Роль: ${user.role} <br>
+                Аккаунт создан: ${new Date().toLocaleDateString()}
+            </div>
+        `;
+  }
+
+  renderProfile();
+</script>
 </body>
 </html>

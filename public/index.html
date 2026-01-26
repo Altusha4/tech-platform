@@ -1,28 +1,128 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-    <meta charset="UTF-8" />
-    <title>Tech Platform</title>
-    <link rel="stylesheet" href="/css/style.css" />
+    <meta charset="UTF-8">
+    <title>Tech Platform - Feed</title>
+    <style>
+        :root { --primary: #0071e3; --bg: #f5f5f7; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; }
+
+        /* Стили для шапки */
+        .navbar { background: white; padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 1000; }
+        .logo { font-size: 20px; font-weight: bold; color: var(--primary); text-decoration: none; }
+        .user-menu { display: flex; align-items: center; gap: 20px; }
+        .welcome-text { font-weight: 500; color: #333; }
+        .btn-logout { background: #ff3b30; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; }
+        .btn-login { background: var(--primary); color: white; text-decoration: none; padding: 8px 15px; border-radius: 6px; }
+
+        .container { max-width: 1100px; margin: 40px auto; padding: 0 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; }
+        .card { background: white; border-radius: 18px; padding: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .type-tag { font-size: 11px; font-weight: bold; text-transform: uppercase; color: var(--primary); }
+        .like-btn {
+            background: #fff;
+            border: 1px solid #ff3b30;
+            color: #ff3b30;
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .like-btn:hover {
+            background: #fff5f5;
+        }
+    </style>
 </head>
 <body>
 
+<nav class="navbar">
+    <a href="/" class="logo">TechPlatform</a>
+    <div id="auth-section" class="user-menu">
+    </div>
+</nav>
+
 <div class="container">
-    <h1>Tech Platform 🚀</h1>
-
-    <section class="create-post">
-        <h2>Create post</h2>
-        <input id="title" type="text" placeholder="Title" />
-        <textarea id="description" placeholder="Description"></textarea>
-        <button id="publishBtn">Publish</button>
-    </section>
-
-    <section>
-        <h2>Posts</h2>
-        <div id="posts"></div>
-    </section>
+    <h1 id="page-title">Инновации в IT 🚀</h1>
+    <div id="feed" class="grid"></div>
 </div>
 
-<script src="/js/app.js"></script>
+<script>
+    // 1. Проверка авторизации
+    function checkAuth() {
+        const authSection = document.getElementById('auth-section');
+        const userData = localStorage.getItem('user');
+        if (userData) {
+            const user = JSON.parse(userData);
+            authSection.innerHTML = `
+                <a href="/profile.html" style="text-decoration: none; color: inherit; font-weight: 500;">Привет, 👋 ${user.username}!</a>
+                <button class="btn-logout" onclick="logout()">Выйти</button>
+            `;
+        } else {
+            authSection.innerHTML = `<a href="/login.html" class="btn-login">Войти</a>`;
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.reload();
+    }
+
+    // 2. ОБНОВЛЕННАЯ ЗАГРУЗКА КОНТЕНТА (с кнопкой лайка)
+    async function fetchFeed() {
+        const response = await fetch('/api/content');
+        const data = await response.json();
+        const feedElement = document.getElementById('feed');
+
+        feedElement.innerHTML = data.map(item => `
+            <div class="card">
+                <div class="type-tag">${item.type === 'video' ? '🎥 Видео' : '📄 Статья'}</div>
+                <h3>${item.title}</h3>
+                <p style="color: #666; font-size: 14px;">${item.preview}</p>
+                <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 13px; color: #888;">
+                        👤 ${item.authorId?.username || 'Автор'}
+                    </div>
+                    <button onclick="handleLike('${item._id}')" class="like-btn">
+                        ❤️ <span id="likes-count-${item._id}">${item.likes || 0}</span>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // 3. НОВАЯ ФУНКЦИЯ ОБРАБОТКИ ЛАЙКА
+    async function handleLike(contentId) {
+        const storedUser = localStorage.getItem('user');
+        if (!storedUser) {
+            alert("Пожалуйста, войдите!");
+            return;
+        }
+
+        const user = JSON.parse(storedUser);
+        const userId = user.id || user._id;
+
+        const res = await fetch(`/api/content/${contentId}/like`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: userId })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+
+            const countSpan = document.getElementById(`likes-count-${contentId}`);
+            countSpan.innerText = data.likes;
+
+            const btn = countSpan.parentElement;
+            btn.style.background = data.isLiked ? "#ff3b30" : "#fff";
+            btn.style.color = data.isLiked ? "#fff" : "#ff3b30";
+        }
+    }
+
+    checkAuth();
+    fetchFeed();
+</script>
 </body>
 </html>
