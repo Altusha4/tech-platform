@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 
+const authRoutes = require('./routes/auth'); // Роуты для login/register
 const User = require('./models/User');
 const Content = require('./models/Content');
 const Notification = require('./models/Notification');
@@ -15,6 +16,7 @@ const publicPath = path.join(__dirname, '..', 'public');
 app.use(express.static(publicPath));
 app.use(cors());
 app.use(express.json());
+app.use('/api/auth', authRoutes);
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(publicPath, 'index.html'));
@@ -29,13 +31,17 @@ app.get('/api/content', async (req, res) => {
 
 app.get('/api/notifications/:userId', async (req, res) => {
     try {
-        const notes = await Notification.find({ userId: req.params.userId }).populate('fromUserId', 'username').sort({ createdAt: -1 });
+        const notes = await Notification.find({ userId: req.params.userId })
+            .populate('fromUserId', 'username')
+            .sort({ createdAt: -1 });
         res.json(notes);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 mongoose.connect(process.env.MONGO_URI)
     .then(() => {
-        console.log("MongoDB Connected");
-        app.listen(3000, () => console.log("Server: http://localhost:3000"));
-    });
+        console.log("MongoDB Connected & Auth Routes Ready");
+        const PORT = process.env.PORT || 3000;
+        app.listen(PORT, () => console.log(`Server running: http://localhost:${PORT}`));
+    })
+    .catch(err => console.error("Connection error:", err));
