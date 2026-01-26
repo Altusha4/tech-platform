@@ -1,25 +1,41 @@
 const mongoose = require('mongoose');
 
 const contentSchema = new mongoose.Schema({
-    type: { type: String, enum: ['post', 'video'], required: true },
-    title: { type: String, required: true },
-    preview: { type: String },
-    body: { type: String },
-    authorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    category: { type: String },
-    tags: [{ type: String }],
-    likes: { type: Number, default: 0 },
-    stats: {
-        views: { type: Number, default: 0 },
-        commentsCount: { type: Number, default: 0 }
+    title: {
+        type: String,
+        required: true
     },
-    comments: [{
-        authorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        username: String,
-        text: String,
-        createdAt: { type: Date, default: Date.now }
+    type: {
+        type: String,
+        enum: ['video', 'post'],
+        required: true
+    },
+    authorId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    preview: {
+        type: String
+    },
+    url: {
+        type: String
+    },
+    likes: {
+        type: Number,
+        default: 0
+    },
+    // МАССИВ ДЛЯ УМНЫХ ЛАЙКОВ:
+    // Здесь мы храним ID пользователей, чтобы один человек не мог лайкнуть дважды
+    likedBy: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     }],
-    createdAt: { type: Date, default: Date.now }
-});
+    createdAt: {
+        type: Date,
+        default: Date.now
+    }
+}, { timestamps: true });
 
+// Экспортируем модель. Третий аргумент 'content' — это имя коллекции в Atlas
 module.exports = mongoose.model('Content', contentSchema, 'content');

@@ -38,6 +38,44 @@ app.get('/api/notifications/:userId', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.post('/api/content/:id/like', async (req, res) => {
+    try {
+        const contentId = req.params.id;
+        const { userId } = req.body;
+
+        const post = await Content.findById(contentId);
+        if (!post) return res.status(404).json({ error: "Пост не найден" });
+
+        // Проверяем наличие ID в массиве likedBy (в БД)
+        const isLiked = post.likedBy.includes(userId);
+
+        if (isLiked) {
+            // Удаляем лайк из БД
+            post.likedBy = post.likedBy.filter(id => id.toString() !== userId.toString());
+            post.likes = Math.max(0, post.likes - 1);
+        } else {
+            // Добавляем лайк в БД
+            post.likedBy.push(userId);
+            post.likes += 1;
+
+            // Создаем уведомление в БД
+            const newNotification = new Notification({
+                userId: post.authorId,
+                fromUserId: userId,
+                type: 'like',
+                message: `поставил(а) лайк вашему посту: "${post.title}"`,
+                contentId: post._id
+            });
+            await newNotification.save();
+        }
+
+        await post.save();
+        res.json({ success: true, likes: post.likes, isLiked: !isLiked });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 mongoose.connect(process.env.MONGO_URI)
     .then(() => {
         console.log("MongoDB Connected & Auth Routes Ready");
