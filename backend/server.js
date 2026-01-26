@@ -76,6 +76,25 @@ app.post('/api/content/:id/like', async (req, res) => {
     }
 });
 
+// Обновление профиля пользователя
+app.put('/api/users/update', async (req, res) => {
+    try {
+        const { userId, interests } = req.body;
+
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { interests: interests },
+            { new: true }
+        ).select('-passwordHash');
+
+        if (!updatedUser) return res.status(404).json({ error: "Пользователь не найден" });
+
+        res.json({ message: "Профиль обновлен!", user: updatedUser });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 mongoose.connect(process.env.MONGO_URI)
     .then(() => {
         console.log("MongoDB Connected & Auth Routes Ready");
