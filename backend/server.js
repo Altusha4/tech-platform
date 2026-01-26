@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const multer = require('multer');
+const fs = require('fs');
 
 const authRoutes = require('./routes/auth');
 const User = require('./models/User');
@@ -14,11 +15,32 @@ const Follow = require('./models/Follow');
 const app = express();
 const publicPath = path.join(__dirname, '..', 'public');
 
-const storage = multer.diskStorage({
+// --- НАСТРОЙКА ХРАНИЛИЩА ---
+
+// 1. Для аватарок
+const avatarStorage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, path.join(publicPath, 'uploads', 'avatars')),
     filename: (req, file, cb) => cb(null, 'avatar-' + Date.now() + path.extname(file.originalname))
 });
-const upload = multer({ storage: storage });
+const uploadAvatar = multer({ storage: avatarStorage });
+
+// 2. Для контента (картинки и видео)
+const contentStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const type = file.mimetype.startsWith('image/') ? 'images' : 'videos';
+        const uploadDir = path.join(publicPath, 'uploads', type);
+
+        // Создаем папку, если её нет
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        cb(null, 'content-' + Date.now() + path.extname(file.originalname));
+    }
+});
+const uploadContent = multer({ storage: contentStorage });
 
 app.use(express.static(publicPath));
 app.use('/uploads', express.static(path.join(publicPath, 'uploads')));
@@ -27,32 +49,41 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 
 // --- 1. ЗАГРУЗКА АВАТАРКИ ---
-app.post('/api/users/upload-avatar', upload.single('avatar'), async (req, res) => {
+app.post('/api/users/upload-avatar', uploadAvatar.single('avatar'), async (req, res) => {
     try {
         const { userId } = req.body;
+        if (!req.file) return res.status(400).json({ error: "Файл не загружен" });
         const avatarUrl = `/uploads/avatars/${req.file.filename}`;
         const user = await User.findByIdAndUpdate(userId, { avatarUrl }, { new: true }).select('-passwordHash');
         res.json({ message: "Аватарка загружена!", user });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- 2. СОЗДАНИЕ ПОСТА (ИСПРАВЛЕННЫЙ ПРИЕМ ДАННЫХ) ---
-app.post('/api/content', async (req, res) => {
+// --- 2. СОЗДАНИЕ ПОСТА (С ПОДДЕРЖКОЙ ФАЙЛОВ) ---
+app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => {
     try {
-        // Логируем ВЕСЬ пришедший объект, чтобы увидеть ключи
         console.log("--- ПОЛУЧЕН НОВЫЙ ПОСТ ---");
-        console.log("Данные из тела запроса:", req.body);
-
+        // При использовании multer данные лежат в req.body, а файл в req.file
         const { title, preview, body, category, tags, userId, type } = req.body;
 
+        let mediaUrl = null;
+        let finalType = type || 'post';
+
+        if (req.file) {
+            const folder = req.file.mimetype.startsWith('image/') ? 'images' : 'videos';
+            mediaUrl = `/uploads/${folder}/${req.file.filename}`;
+            // Автоматически корректируем тип, если загружен файл
+            finalType = req.file.mimetype.startsWith('image/') ? 'image' : 'video';
+        }
+
         const newPost = new Content({
-            type: type || 'video',
-            title: title,
-            preview: preview,
-            body: body,
-            // Явная проверка: если category есть в req.body, берем её
-            category: category ? category : 'Other',
-            tags: tags || [],
+            type: finalType,
+            title,
+            preview,
+            body, // Здесь может быть текст или ссылка YouTube
+            mediaUrl, // Ссылка на наш локальный файл
+            category: category || 'Other',
+            tags: tags ? tags.split(',') : [], // Фронтенд пришлет теги строкой через запятую
             authorId: userId,
             likes: 0,
             likedBy: [],
@@ -61,7 +92,6 @@ app.post('/api/content', async (req, res) => {
 
         const savedPost = await newPost.save();
         console.log("СОХРАНЕНО В БАЗУ:", savedPost);
-
         res.status(201).json(savedPost);
     } catch (err) {
         console.error("ОШИБКА СОЗДАНИЯ:", err.message);

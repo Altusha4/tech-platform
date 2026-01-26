@@ -7,7 +7,8 @@ const contentSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['video', 'post', 'article'], // Добавили article на всякий случай
+        // Расширили список типов для поддержки изображений и обычного текста
+        enum: ['video', 'post', 'article', 'image', 'text'],
         required: true
     },
     authorId: {
@@ -18,16 +19,19 @@ const contentSchema = new mongoose.Schema({
     preview: {
         type: String
     },
-    // Добавляем поле body (в нем будет храниться ссылка или текст)
+    // Поле body для текста статьи или ссылки на YouTube
     body: {
         type: String
     },
-    // Добавляем поле category (теперь оно будет сохраняться!)
+    // Поле для хранения пути к загруженному файлу (картинке или видео)
+    mediaUrl: {
+        type: String,
+        default: null
+    },
     category: {
         type: String,
         default: 'Other'
     },
-    // Добавляем массив тегов для умной ленты
     tags: [{
         type: String
     }],
@@ -39,10 +43,16 @@ const contentSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
+    // Статистика поста
+    stats: {
+        views: { type: Number, default: 0 },
+        commentsCount: { type: Number, default: 0 }
+    },
     createdAt: {
         type: Date,
         default: Date.now
     }
 }, { timestamps: true });
 
+// Экспортируем модель. Третий аргумент 'content' — имя коллекции в MongoDB
 module.exports = mongoose.model('Content', contentSchema, 'content');

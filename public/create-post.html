@@ -17,12 +17,20 @@
     }
     textarea { height: 80px; resize: none; }
 
+    /* Стили для поля файла */
+    .file-input-wrapper {
+      border: 2px dashed #ddd; padding: 20px; text-align: center;
+      border-radius: 12px; margin-bottom: 20px; cursor: pointer; transition: 0.2s;
+    }
+    .file-input-wrapper:hover { border-color: var(--primary); background: #fbfdff; }
+
     .tag-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px; }
     .tag-checkbox { display: none; }
     .tag-label { padding: 8px 16px; border: 1px solid #ddd; border-radius: 20px; cursor: pointer; font-size: 13px; transition: 0.2s; background: #fff; }
     .tag-checkbox:checked + .tag-label { background: var(--primary); color: white; border-color: var(--primary); }
 
     .publish-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 18px; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; }
+    .publish-btn:disabled { background: #ccc; cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -32,7 +40,7 @@
   <h1>Новая публикация 🚀</h1>
 
   <label>Заголовок (title)</label>
-  <input type="text" id="post-title" placeholder="Напр: MongoDB Crash Course 2026">
+  <input type="text" id="post-title" placeholder="Напр: Мой новый проект">
 
   <label>Краткое превью (preview)</label>
   <input type="text" id="post-preview" placeholder="Краткое описание для карточки">
@@ -45,8 +53,13 @@
     <option value="Other">Other</option>
   </select>
 
-  <label>Ссылка или контент (body)</label>
-  <input type="text" id="post-body" placeholder="URL видео с YouTube или текст">
+  <label>Ссылка или текст (body)</label>
+  <textarea id="post-body" placeholder="URL видео с YouTube или текст статьи..."></textarea>
+
+  <label>Загрузить медиа (фото или видео)</label>
+  <div class="file-input-wrapper">
+    <input type="file" id="media-file" accept="image/*,video/*">
+  </div>
 
   <label>Теги (tags)</label>
   <div class="tag-group">
@@ -68,43 +81,49 @@
     const body = document.getElementById('post-body').value.trim();
     const category = document.getElementById('post-category').value;
     const tags = Array.from(document.querySelectorAll('.tag-checkbox:checked')).map(cb => cb.value);
+    const mediaFile = document.getElementById('media-file').files[0];
 
     const userData = localStorage.getItem('user');
     if (!userData) return alert("Войдите в систему");
     const user = JSON.parse(userData);
 
-    if(!title || !body) return alert("Заголовок и ссылка обязательны");
+    // Валидация: нужен либо текст/ссылка, либо файл
+    if(!title) return alert("Заголовок обязателен");
+    if(!body && !mediaFile) return alert("Добавьте описание или загрузите файл");
 
     const btn = document.getElementById('publish-btn');
     btn.disabled = true;
-    btn.innerText = "Сохранение...";
+    btn.innerText = "Загрузка...";
 
-    // Объект данных для проверки
-    const postData = {
-      type: "video",
-      title,
-      preview,
-      body,
-      category, // Проверь, что тут не "Other"
-      tags,
-      userId: user.id || user._id
-    };
+    // Создаем FormData для отправки файлов
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('preview', preview);
+    formData.append('body', body);
+    formData.append('category', category);
+    formData.append('tags', tags.join(',')); // Отправляем массив как строку через запятую
+    formData.append('userId', user.id || user._id);
 
-    console.log("Отправляем данные:", postData);
+    // Определяем базовый тип (сервер его уточнит по файлу)
+    formData.append('type', (body.includes('youtube') || body.includes('youtu.be')) ? 'video' : 'post');
+
+    if (mediaFile) {
+      formData.append('mediaFile', mediaFile);
+    }
 
     try {
       const res = await fetch('/api/content', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(postData)
+        // Заголовок Content-Type НЕ ставим, браузер сам поставит multipart/form-data
+        body: formData
       });
 
       if (res.ok) {
-        alert("Пост создан в категории: " + category);
+        alert("Опубликовано!");
         window.location.href = '/';
       } else {
         const err = await res.json();
-        alert("Ошибка сервера: " + err.error);
+        alert("Ошибка: " + err.error);
       }
     } catch (e) {
       alert("Ошибка сети");

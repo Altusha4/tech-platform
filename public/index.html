@@ -48,9 +48,11 @@
         .category-tag { font-size: 10px; background: #eee; padding: 2px 8px; border-radius: 4px; color: #666; text-transform: uppercase; }
         .type-tag { font-size: 11px; font-weight: bold; text-transform: uppercase; color: var(--primary); }
 
-        /* Стили для видео */
-        .video-container { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 15px; background: #000; aspect-ratio: 16/9; }
-        .video-container iframe { width: 100%; height: 100%; border: none; }
+        /* Универсальный контейнер для медиа (видео/фото) */
+        .media-container { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 15px; background: #000; aspect-ratio: 16/9; }
+        .media-container iframe, .media-container video, .media-container img {
+            width: 100%; height: 100%; border: none; object-fit: cover;
+        }
 
         .interest-tag {
             display: inline-flex; background: #e8f2ff; color: var(--primary);
@@ -92,7 +94,6 @@
 <script>
     let currentCategory = 'All';
 
-    // Функция для преобразования ссылки YouTube в Embed-формат
     function getYouTubeEmbedUrl(url) {
         if (!url) return null;
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -103,13 +104,11 @@
     function renderUserHeader(user) {
         const authSection = document.getElementById('auth-section');
         const miniAvatar = document.getElementById('mini-avatar-placeholder');
-
         if (miniAvatar) {
             miniAvatar.innerHTML = user.avatarUrl
                 ? `<img src="${user.avatarUrl}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">`
                 : `<div style="width:40px; height:40px; border-radius:50%; background:#ddd; display:flex; align-items:center; justify-content:center;">👤</div>`;
         }
-
         if (authSection) {
             authSection.innerHTML = `
             <div style="display: flex; align-items: center; gap: 20px;">
@@ -155,26 +154,42 @@
             const isRec = user && item.tags && item.tags.some(tag => user.interests.includes(tag));
             const userHasLiked = user && item.likedBy && item.likedBy.includes(userId);
 
-            // Проверяем наличие видео ссылки
-            const embedUrl = item.type === 'video' ? getYouTubeEmbedUrl(item.body) : null;
+            // 1. Проверяем YouTube
+            const youtubeUrl = getYouTubeEmbedUrl(item.body);
+            // 2. Проверяем загруженный файл
+            const mediaUrl = item.mediaUrl;
+
+            // Определяем иконку типа
+            let typeLabel = '📄 Статья';
+            if (mediaUrl) {
+                typeLabel = item.type === 'image' ? '🖼️ Фото' : '🎬 Видео';
+            } else if (youtubeUrl) {
+                typeLabel = '🎥 YouTube';
+            }
 
             return `
             <div class="card ${isRec ? 'recommended' : ''}">
                 ${isRec ? '<div class="rec-badge">✨ РЕКОМЕНДУЕМ</div>' : ''}
                 <div class="card-meta">
-                    <div class="type-tag">${item.type === 'video' ? '🎥 Видео' : '📄 Статья'}</div>
+                    <div class="type-tag">${typeLabel}</div>
                     <div class="category-tag">${item.category || 'Other'}</div>
                 </div>
                 <h3 style="margin: 5px 0 10px 0;">${item.title}</h3>
 
                 <div class="card-body-content">
-                    ${embedUrl
-                ? `<div class="video-container">
-                             <iframe src="${embedUrl}" allowfullscreen></iframe>
+                    ${mediaUrl
+                ? `<div class="media-container">
+                             ${item.type === 'image'
+                    ? `<img src="${mediaUrl}">`
+                    : `<video src="${mediaUrl}" controls></video>`}
                            </div>`
-                : `<p style="color: #666; font-size: 14px; line-height: 1.5; flex-grow: 1;">
-                             ${item.preview || (item.content ? item.content.substring(0, 100) + '...' : 'Нет описания')}
-                           </p>`
+                : (youtubeUrl
+                    ? `<div class="media-container">
+                                 <iframe src="${youtubeUrl}" allowfullscreen></iframe>
+                               </div>`
+                    : `<p style="color: #666; font-size: 14px; line-height: 1.5; flex-grow: 1;">
+                                 ${item.preview || (item.body ? item.body.substring(0, 100) + '...' : 'Нет описания')}
+                               </p>`)
             }
                 </div>
 
