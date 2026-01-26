@@ -3,15 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <title>Мой профиль</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
   <style>
     body { font-family: -apple-system, sans-serif; background: #f5f5f7; margin: 0; padding: 20px; }
     .profile-card { background: white; max-width: 500px; margin: 50px auto; padding: 30px; border-radius: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-    .avatar { width: 80px; height: 80px; background: #0071e3; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 20px; }
+    .avatar { width: 80px; height: 80px; background: #0071e3; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 20px; overflow: hidden; }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
     .interest-tag { display: inline-block; background: #e8f2ff; color: #0071e3; padding: 5px 12px; border-radius: 15px; font-size: 13px; margin: 5px 5px 5px 0; font-weight: 500; }
     .btn-edit { background: #0071e3; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-top: 20px; }
     .btn-save { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
     .hidden { display: none; }
     .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+    .upload-section { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
+
+    /* Стили для контейнера обрезки */
+    #cropper-container { margin-top: 15px; border: 1px dashed #ccc; padding: 10px; border-radius: 8px; background: #fafafa; }
+    .cropper-wrapper { max-height: 300px; overflow: hidden; }
+    .btn-crop { background: #0071e3; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; margin-top: 10px; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -27,13 +37,27 @@
       <div id="interests-list" style="margin-top: 10px;"></div>
     </div>
 
-    <button class="btn-edit" onclick="toggleMode()">Редактировать интересы</button>
+    <button class="btn-edit" onclick="toggleMode()">Редактировать профиль</button>
     <br>
     <a href="/" style="display: block; margin-top: 20px; color: #0071e3; text-decoration: none; font-size: 14px;">← На главную</a>
   </div>
 
   <div id="edit-mode" class="hidden">
-    <h3>Редактировать интересы</h3>
+    <h3>Редактировать профиль</h3>
+
+    <div class="upload-section">
+      <label style="display: block; margin-bottom: 10px; font-weight: 600;">Фото профиля:</label>
+      <input type="file" id="avatar-input" accept="image/*" onchange="initCropper(event)">
+
+      <div id="cropper-container" class="hidden">
+        <div class="cropper-wrapper">
+          <img id="cropper-image" src="" alt="Source">
+        </div>
+        <button type="button" class="btn-crop" onclick="applyCrop()">Подтвердить обрезку</button>
+      </div>
+    </div>
+
+    <label style="font-weight: 600;">Интересы:</label>
     <div class="edit-grid">
       <label><input type="checkbox" name="edit-interest" value="AI"> AI & ML</label>
       <label><input type="checkbox" name="edit-interest" value="Web"> Web Dev</label>
@@ -42,8 +66,9 @@
       <label><input type="checkbox" name="edit-interest" value="Data"> Data Science</label>
       <label><input type="checkbox" name="edit-interest" value="Cloud"> Cloud</label>
     </div>
+
     <div style="margin-top: 25px; display: flex; gap: 10px;">
-      <button class="btn-save" onclick="saveChanges()">Сохранить</button>
+      <button class="btn-save" id="save-btn" onclick="saveChanges()">Сохранить все</button>
       <button onclick="toggleMode()" style="background: #eee; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">Отмена</button>
     </div>
   </div>
@@ -51,6 +76,8 @@
 
 <script>
   let currentUser = JSON.parse(localStorage.getItem('user'));
+  let cropper;      // Экземпляр Cropper
+  let croppedBlob;  // Результат обрезки
 
   function init() {
     if (!currentUser) {
@@ -61,48 +88,127 @@
   }
 
   function renderData() {
-    document.getElementById('avatar-circle').innerText = currentUser.username[0].toUpperCase();
+    const avatarCircle = document.getElementById('avatar-circle');
+
+    if (currentUser.avatarUrl) {
+      avatarCircle.innerHTML = `<img src="${currentUser.avatarUrl}" alt="Avatar">`;
+    } else {
+      avatarCircle.innerText = currentUser.username[0].toUpperCase();
+    }
+
     document.getElementById('display-name').innerText = currentUser.username;
     document.getElementById('display-email').innerText = currentUser.email;
 
     const list = document.getElementById('interests-list');
-    list.innerHTML = currentUser.interests.length > 0
+    list.innerHTML = (currentUser.interests && currentUser.interests.length > 0)
             ? currentUser.interests.map(i => `<span class="interest-tag">#${i}</span>`).join('')
             : 'Не выбрано';
 
     const checkboxes = document.querySelectorAll('input[name="edit-interest"]');
     checkboxes.forEach(cb => {
-      cb.checked = currentUser.interests.includes(cb.value);
+      cb.checked = currentUser.interests ? currentUser.interests.includes(cb.value) : false;
     });
   }
 
   function toggleMode() {
     document.getElementById('view-mode').classList.toggle('hidden');
     document.getElementById('edit-mode').classList.toggle('hidden');
+    // Сбрасываем кроппер при выходе
+    if (cropper) {
+      cropper.destroy();
+      document.getElementById('cropper-container').classList.add('hidden');
+      croppedBlob = null;
+    }
   }
 
+  // --- ЛОГИКА ОБРЕЗКИ ---
+  function initCropper(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = document.getElementById('cropper-image');
+      img.src = e.target.result;
+      document.getElementById('cropper-container').classList.remove('hidden');
+
+      if (cropper) cropper.destroy();
+      cropper = new Cropper(img, {
+        aspectRatio: 1, // Всегда квадрат
+        viewMode: 1,
+        autoCropArea: 1,
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function applyCrop() {
+    if (!cropper) return;
+    // Создаем квадрат 400x400
+    cropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob((blob) => {
+      croppedBlob = blob;
+      alert("Фото обрезано!");
+      document.getElementById('cropper-container').classList.add('hidden');
+    }, 'image/jpeg');
+  }
+
+  // --- СОХРАНЕНИЕ ---
   async function saveChanges() {
-    const selected = Array.from(document.querySelectorAll('input[name="edit-interest"]:checked'))
+    const saveBtn = document.getElementById('save-btn');
+    saveBtn.innerText = "Сохранение...";
+    saveBtn.disabled = true;
+
+    const userId = currentUser.id || currentUser._id;
+
+    // 1. Загружаем обрезанное фото, если оно есть
+    if (croppedBlob) {
+      const formData = new FormData();
+      formData.append('avatar', croppedBlob, 'avatar.jpg');
+      formData.append('userId', userId);
+
+      try {
+        const uploadRes = await fetch('/api/users/upload-avatar', {
+          method: 'POST',
+          body: formData
+        });
+        const uploadData = await uploadRes.json();
+        if (uploadRes.ok) {
+          currentUser = uploadData.user;
+        }
+      } catch (err) {
+        console.error("Ошибка загрузки фото:", err);
+      }
+    }
+
+    // 2. Сохраняем интересы
+    const selectedInterests = Array.from(document.querySelectorAll('input[name="edit-interest"]:checked'))
             .map(cb => cb.value);
 
-    const res = await fetch('/api/users/update', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: currentUser.id || currentUser._id,
-        interests: selected
-      })
-    });
+    try {
+      const res = await fetch('/api/users/update', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: userId,
+          interests: selectedInterests
+        })
+      });
 
-    if (res.ok) {
-      const data = await res.json();
-      localStorage.setItem('user', JSON.stringify(data.user));
-      currentUser = data.user;
-      renderData();
-      toggleMode();
-      alert("Профиль успешно обновлен!");
-    } else {
-      alert("Ошибка при сохранении");
+      if (res.ok) {
+        const data = await res.json();
+        const finalUserData = { ...data.user, id: data.user._id };
+        localStorage.setItem('user', JSON.stringify(finalUserData));
+        currentUser = finalUserData;
+
+        renderData();
+        toggleMode();
+        alert("Профиль успешно обновлен!");
+      }
+    } catch (err) {
+      alert("Ошибка при сохранении данных");
+    } finally {
+      saveBtn.innerText = "Сохранить все";
+      saveBtn.disabled = false;
     }
   }
 
