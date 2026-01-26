@@ -1,5 +1,19 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
-const userSchema = new mongoose.Schema({}, { strict: false, collection: "users" });
+const userSchema = new mongoose.Schema({
+    username: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    passwordHash: { type: String, required: true },
+    role: { type: String, default: 'user' },
+    interests: [{ type: String }],
+    followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    stats: {
+        postsCount: { type: Number, default: 0 },
+        totalLikes: { type: Number, default: 0 },
+        totalViews: { type: Number, default: 0 }
+    },
+    createdAt: { type: Date, default: Date.now }
+});
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = mongoose.model('User', userSchema, 'users');
