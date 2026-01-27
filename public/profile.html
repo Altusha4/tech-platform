@@ -57,6 +57,61 @@
     .upload-section { margin-bottom: 25px; padding: 20px; border: 2px dashed #eee; border-radius: 15px; text-align: center; }
     #cropper-container { margin-top: 20px; }
     .cropper-wrapper { max-height: 350px; border-radius: 12px; overflow: hidden; }
+
+    /* Контейнер для аватара с кнопкой */
+    .avatar-container {
+      position: relative;
+      width: 110px;
+      height: 110px;
+      margin-bottom: 10px;
+    }
+
+    .avatar {
+      width: 100%;
+      height: 100%;
+      background: var(--primary);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 45px;
+      overflow: hidden;
+      border: 4px solid #fff;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    /* Кнопка поверх аватара */
+    .avatar-edit-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+      opacity: 0;
+      transition: 0.3s;
+      cursor: pointer;
+      pointer-events: none; /* Чтобы клик пролетал сквозь оверлей на контейнер */
+    }
+
+    .avatar-container:hover .avatar-edit-overlay {
+      opacity: 1;
+    }
+
+    .avatar-container:hover .avatar {
+      filter: brightness(0.8);
+    }
+
   </style>
 </head>
 <body>
@@ -64,12 +119,14 @@
 <div class="profile-card">
   <div id="view-mode">
     <div class="profile-header">
-      <div class="avatar" id="avatar-circle">?</div>
+      <div class="avatar-container" onclick="toggleMode()">
+        <div class="avatar" id="avatar-circle">?</div>
+        <div class="avatar-edit-overlay">ИЗМЕНИТЬ</div>
+      </div>
       <div>
         <h2 id="display-name" style="margin: 0; font-size: 26px;">Загрузка...</h2>
         <p id="display-email" style="color: #666; margin: 5px 0 0 0;"></p>
       </div>
-      <button onclick="toggleMode()" style="margin-left: auto; background: #f0f0f2; border: none; padding: 12px 18px; border-radius: 12px; cursor: pointer; font-weight: 500;">⚙️ Сменить фото</button>
     </div>
 
     <div class="tabs">
@@ -272,6 +329,7 @@
 
   async function saveAvatarOnly() {
     if(!croppedBlob) { alert("Сначала выберите фото и нажмите 'Обрезать'"); return; }
+
     const userId = currentUser.id || currentUser._id;
     const btn = document.getElementById('save-avatar-btn');
     btn.innerText = "Загрузка...";
@@ -284,11 +342,20 @@
       const res = await fetch('/api/users/upload-avatar', { method: 'POST', body: fd });
       if(res.ok) {
         const data = await res.json();
-        currentUser.avatarUrl = data.user.avatarUrl;
-        localStorage.setItem('user', JSON.stringify(currentUser));
-        location.reload();
+
+        // Мы берем текущие данные юзера и заменяем в них только аватарку
+        const updatedUser = { ...currentUser, avatarUrl: data.user.avatarUrl };
+
+        // Сохраняем обновленный объект в память браузера
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+
+        alert("Фото успешно обновлено!");
+        location.reload(); // Перезагружаем профиль, чтобы увидеть результат
       }
-    } catch (e) { alert("Ошибка загрузки"); btn.innerText = "Сохранить фото"; }
+    } catch (e) {
+      alert("Ошибка загрузки");
+      btn.innerText = "Сохранить фото";
+    }
   }
 
   init();
