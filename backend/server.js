@@ -267,6 +267,24 @@ app.post('/api/comments', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// --- УДАЛЕНИЕ КОММЕНТАРИЯ ---
+app.delete('/api/comments/:id', async (req, res) => {
+    try {
+        const comment = await Comment.findById(req.params.id);
+        if (!comment) return res.status(404).json({ error: "Комментарий не найден" });
+
+        const postId = comment.postId;
+        await Comment.findByIdAndDelete(req.params.id);
+
+        // Уменьшаем счетчик в посте (хотя мы считаем динамически, в базе поле тоже стоит обновлять)
+        await Content.findByIdAndUpdate(postId, { $inc: { 'stats.commentsCount': -1 } });
+
+        res.json({ message: "Комментарий удален" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // --- ЗАПУСК ---
 mongoose.connect(process.env.MONGO_URI)
     .then(() => {

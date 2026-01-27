@@ -150,7 +150,6 @@
   let cropper;
   let croppedBlob;
 
-  // Хелпер для YouTube
   function getYouTubeID(url) {
     if (!url) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -232,7 +231,11 @@
           </div>
           <div class="post-content">
             <div class="post-title" onclick="window.location.href='/post.html?id=${post._id}'">${post.title}</div>
-            <div class="post-stats"><span style="color:var(--red)">❤️ ${post.likes || 0}</span> <span>👤 ${post.authorId?.username || 'Автор'}</span></div>
+            <div class="post-stats">
+                <span style="color:var(--red)">❤️ ${post.likes || 0}</span>
+                <span>💬 ${post.stats?.commentsCount || 0}</span>
+                <span>👤 ${post.authorId?.username || 'Автор'}</span>
+            </div>
           </div>
         </div>
       `;}).join('') : "<p style='grid-column:1/-1; text-align:center; color:#999;'>Нет лайков</p>";

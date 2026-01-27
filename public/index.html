@@ -14,7 +14,6 @@
         .container { max-width: 1100px; margin: 40px auto; padding: 0 20px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; }
 
-        /* Категории */
         .category-bar { display: flex; gap: 10px; margin-bottom: 25px; overflow-x: auto; padding-bottom: 10px; }
         .cat-btn {
             padding: 8px 20px; border-radius: 20px; border: 1px solid #ddd;
@@ -48,7 +47,6 @@
         .category-tag { font-size: 10px; background: #eee; padding: 2px 8px; border-radius: 4px; color: #666; text-transform: uppercase; }
         .type-tag { font-size: 11px; font-weight: bold; text-transform: uppercase; color: var(--primary); }
 
-        /* Универсальный контейнер для медиа (видео/фото) */
         .media-container { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 15px; background: #000; aspect-ratio: 16/9; cursor: pointer; }
         .media-container iframe, .media-container video, .media-container img {
             width: 100%; height: 100%; border: none; object-fit: cover;
@@ -69,7 +67,6 @@
         .like-btn { border-color: #ff3b30; color: #ff3b30; }
         .like-btn.active { background: #ff3b30; color: #fff; }
 
-        /* Комментарии */
         .comments-section {
             margin-top: 15px;
             padding-top: 15px;
@@ -81,9 +78,10 @@
             gap: 10px;
             margin-bottom: 12px;
             font-size: 13px;
+            transition: opacity 0.3s;
         }
         .comment-avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: #eee; }
-        .comment-bubble { background: #f0f2f5; padding: 8px 12px; border-radius: 12px; flex-grow: 1; }
+        .comment-bubble { background: #f0f2f5; padding: 8px 12px; border-radius: 12px; flex-grow: 1; position: relative; }
         .comment-input-area { display: flex; gap: 8px; margin-top: 15px; }
         .comment-input { flex-grow: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 18px; font-size: 13px; outline: none; }
         .comment-send-btn { border:none; background:none; cursor:pointer; font-size: 16px; transition: transform 0.2s; }
@@ -118,7 +116,6 @@
 <script>
     let currentCategory = 'All';
 
-    // Получаем ID видео из ссылки YouTube
     function getYouTubeID(url) {
         if (!url) return null;
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -277,28 +274,57 @@
 
     async function loadComments(postId) {
         const list = document.getElementById(`comments-list-${postId}`);
-        list.innerHTML = "<div style='font-size:12px; color:#888;'>Загрузка...</div>";
+        const user = JSON.parse(localStorage.getItem('user'));
+        const currentUserId = user ? (user.id || user._id) : null;
 
         try {
             const res = await fetch(`/api/comments/${postId}`);
             const comments = await res.json();
 
             if (comments.length === 0) {
-                list.innerHTML = "<div style='font-size:12px; color:#888;'>Пока нет комментариев. Будьте первым!</div>";
+                list.innerHTML = "<div style='font-size:12px; color:#888;'>Пока нет комментариев.</div>";
                 return;
             }
 
-            list.innerHTML = comments.map(c => `
-                <div class="comment-item">
+            list.innerHTML = comments.map(c => {
+                const isMyComment = currentUserId && (c.authorId?._id === currentUserId || c.authorId === currentUserId);
+
+                return `
+                <div class="comment-item" id="comment-${c._id}">
                     <img src="${c.authorId?.avatarUrl || 'https://via.placeholder.com/30'}" class="comment-avatar">
                     <div class="comment-bubble">
-                        <strong>${c.authorId?.username || 'Пользователь'}</strong>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <strong>${c.authorId?.username || 'Пользователь'}</strong>
+                            ${isMyComment ? `<span onclick="deleteComment('${c._id}', '${postId}')" style="cursor:pointer; opacity:0.5; font-size:10px;" title="Удалить">🗑️</span>` : ''}
+                        </div>
                         <div>${c.text}</div>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
+        } catch (e) { console.error(e); }
+    }
+
+    async function deleteComment(commentId, postId) {
+        if (!confirm("Удалить этот комментарий?")) return;
+
+        try {
+            const res = await fetch(`/api/comments/${commentId}`, { method: 'DELETE' });
+            if (res.ok) {
+                const el = document.getElementById(`comment-${commentId}`);
+                if (el) el.style.opacity = '0';
+
+                setTimeout(() => {
+                    loadComments(postId);
+                    const countSpan = document.getElementById(`comm-count-${postId}`);
+                    if (countSpan) {
+                        const newCount = Math.max(0, parseInt(countSpan.innerText) - 1);
+                        countSpan.innerText = newCount;
+                    }
+                }, 300);
+            }
         } catch (e) {
-            list.innerHTML = "Ошибка загрузки";
+            alert("Ошибка при удалении");
         }
     }
 

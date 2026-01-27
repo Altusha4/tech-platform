@@ -16,17 +16,20 @@
     .interest-tag { color: var(--primary); margin-right: 12px; text-decoration: none; font-weight: 500; }
     .back-link { display: inline-block; margin-bottom: 20px; text-decoration: none; color: var(--primary); font-weight: 500; }
 
-    /* Стили комментариев (как на главной) */
+    /* Стили комментариев */
     .comments-section { margin-top: 40px; border-top: 1px solid #eee; padding-top: 30px; }
-    .comment-item { display: flex; gap: 12px; margin-bottom: 15px; }
+    .comment-item { display: flex; gap: 12px; margin-bottom: 15px; transition: opacity 0.3s; }
     .comment-avatar { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; background: #eee; }
-    .comment-bubble { background: #f0f2f5; padding: 10px 15px; border-radius: 15px; flex-grow: 1; }
+    .comment-bubble { background: #f0f2f5; padding: 10px 15px; border-radius: 15px; flex-grow: 1; position: relative; }
     .comment-bubble strong { display: block; font-size: 13px; margin-bottom: 4px; }
 
     .comment-input-area { display: flex; gap: 10px; margin-top: 25px; align-items: center; }
     .comment-input { flex-grow: 1; padding: 12px 18px; border: 1px solid #ddd; border-radius: 25px; outline: none; font-size: 14px; }
     .comment-send-btn { border: none; background: none; cursor: pointer; font-size: 20px; transition: 0.2s; }
     .comment-send-btn:hover { transform: scale(1.2); }
+
+    .delete-btn { cursor: pointer; opacity: 0.5; font-size: 12px; transition: 0.2s; }
+    .delete-btn:hover { opacity: 1; color: #ff3b30; }
   </style>
 </head>
 <body>
@@ -40,8 +43,7 @@
 
   <div class="comments-section">
     <h3>Комментарии (<span id="comm-total">0</span>)</h3>
-    <div id="comments-list">
-    </div>
+    <div id="comments-list"></div>
 
     <div class="comment-input-area">
       <input type="text" id="new-comment-text" class="comment-input" placeholder="Напишите свое мнение...">
@@ -92,7 +94,6 @@
                 </div>
             `;
 
-      // Загружаем комментарии сразу после загрузки поста
       loadComments();
     } catch (e) {
       document.getElementById('post-view').innerHTML = "<h2>Ошибка: Публикация не найдена</h2>";
@@ -103,6 +104,7 @@
   async function loadComments() {
     const list = document.getElementById('comments-list');
     const countSpan = document.getElementById('comm-total');
+    const currentUserId = currentUser ? (currentUser.id || currentUser._id) : null;
 
     try {
       const res = await fetch(`/api/comments/${postId}`);
@@ -115,15 +117,23 @@
         return;
       }
 
-      list.innerHTML = comments.map(c => `
-                <div class="comment-item">
+      list.innerHTML = comments.map(c => {
+        // Проверяем, является ли текущий юзер автором комментария
+        const isMyComment = currentUserId && (c.authorId?._id === currentUserId || c.authorId === currentUserId);
+
+        return `
+                <div class="comment-item" id="comment-${c._id}">
                     <img src="${c.authorId?.avatarUrl || 'https://via.placeholder.com/35'}" class="comment-avatar">
                     <div class="comment-bubble">
-                        <strong>${c.authorId?.username || 'Пользователь'}</strong>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <strong>${c.authorId?.username || 'Пользователь'}</strong>
+                            ${isMyComment ? `<span class="delete-btn" onclick="deleteComment('${c._id}')">🗑️</span>` : ''}
+                        </div>
                         <div>${c.text}</div>
                     </div>
                 </div>
-            `).join('');
+            `;
+      }).join('');
     } catch (e) {
       list.innerHTML = "Ошибка загрузки комментариев";
     }
@@ -149,14 +159,29 @@
 
       if (res.ok) {
         input.value = '';
-        loadComments(); // Перезагружаем список
+        loadComments();
       }
     } catch (e) {
       alert("Не удалось отправить комментарий");
     }
   }
 
-  // Обработка нажатия Enter
+  async function deleteComment(commentId) {
+    if (!confirm("Удалить этот комментарий?")) return;
+
+    try {
+      const res = await fetch(`/api/comments/${commentId}`, { method: 'DELETE' });
+      if (res.ok) {
+        const el = document.getElementById(`comment-${commentId}`);
+        if (el) el.style.opacity = '0';
+        // Ждем окончания анимации и обновляем список
+        setTimeout(() => loadComments(), 300);
+      }
+    } catch (e) {
+      alert("Ошибка при удалении комментария");
+    }
+  }
+
   document.getElementById('new-comment-text').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') addComment();
   });
