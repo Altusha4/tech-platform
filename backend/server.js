@@ -69,7 +69,7 @@ app.post('/api/users/upload-avatar', uploadAvatar.single('avatar'), async (req, 
         if (!req.file) return res.status(400).json({ error: "Файл не загружен" });
 
         const user = await User.findById(userId);
-        if (user && user.avatarUrl) deleteLocalFile(user.avatarUrl); // Удаляем старую
+        if (user && user.avatarUrl) deleteLocalFile(user.avatarUrl);
 
         const avatarUrl = `/uploads/avatars/${req.file.filename}`;
         const updatedUser = await User.findByIdAndUpdate(userId, { avatarUrl }, { new: true }).select('-passwordHash');
@@ -108,7 +108,7 @@ app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => 
 app.get('/api/content/single/:id', async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ error: "Неверный ID" });
-        const post = await Content.findById(req.params.id);
+        const post = await Content.findById(req.params.id).populate('authorId', 'username avatarUrl');
         if (!post) return res.status(404).json({ error: "Пост не найден" });
         res.json(post);
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -130,9 +130,9 @@ app.delete('/api/content/:id', async (req, res) => {
     try {
         const post = await Content.findById(req.params.id);
         if (post) {
-            if (post.mediaUrl) deleteLocalFile(post.mediaUrl); // Удаляем файл с диска
+            if (post.mediaUrl) deleteLocalFile(post.mediaUrl);
             await Content.findByIdAndDelete(req.params.id);
-            await Comment.deleteMany({ postId: req.params.id }); // Удаляем связанные комментарии
+            await Comment.deleteMany({ postId: req.params.id });
         }
         res.json({ message: "Удалено" });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -146,8 +146,19 @@ app.get('/api/content', async (req, res) => {
         let query = {};
         if (category && category !== 'All') query.category = category;
 
-        let posts = await Content.find(query).populate('authorId', 'username avatarUrl').sort({ createdAt: -1 }).lean();
+        // 1. Получаем посты
+        let posts = await Content.find(query)
+            .populate('authorId', 'username avatarUrl')
+            .sort({ createdAt: -1 })
+            .lean();
 
+        // 2. ДИНАМИЧЕСКИЙ ПОДСЧЕТ КОММЕНТАРИЕВ (Честный счетчик)
+        posts = await Promise.all(posts.map(async (post) => {
+            const realCount = await Comment.countDocuments({ postId: post._id });
+            return { ...post, stats: { ...post.stats, commentsCount: realCount } };
+        }));
+
+        // 3. Персонализация ленты
         if (userId && userId !== 'undefined' && mongoose.Types.ObjectId.isValid(userId)) {
             const user = await User.findById(userId);
             if (user && user.interests?.length > 0) {
@@ -162,16 +173,30 @@ app.get('/api/content', async (req, res) => {
 
 app.get('/api/content/user/:userId', async (req, res) => {
     try {
-        const posts = await Content.find({ authorId: req.params.userId }).sort({ createdAt: -1 });
+        let posts = await Content.find({ authorId: req.params.userId }).sort({ createdAt: -1 }).lean();
+
+        // Также фиксим счетчик в профиле
+        posts = await Promise.all(posts.map(async (post) => {
+            const realCount = await Comment.countDocuments({ postId: post._id });
+            return { ...post, stats: { ...post.stats, commentsCount: realCount } };
+        }));
+
         res.json(posts);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/content/liked/:userId', async (req, res) => {
     try {
-        const posts = await Content.find({ likedBy: req.params.userId })
+        let posts = await Content.find({ likedBy: req.params.userId })
             .populate('authorId', 'username avatarUrl')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
+
+        posts = await Promise.all(posts.map(async (post) => {
+            const realCount = await Comment.countDocuments({ postId: post._id });
+            return { ...post, stats: { ...post.stats, commentsCount: realCount } };
+        }));
+
         res.json(posts);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -242,10 +267,10 @@ app.post('/api/comments', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- ПОДКЛЮЧЕНИЕ К БД И ЗАПУСК ---
+// --- ЗАПУСК ---
 mongoose.connect(process.env.MONGO_URI)
     .then(() => {
         console.log("MongoDB Connected Successfully");
-        app.listen(process.env.PORT || 3000, () => console.log(`Server running at http://localhost:3000`));
+        app.listen(process.env.PORT || 3000, () => console.log(`Server at http://localhost:3000`));
     })
-    .catch(err => console.error("MongoDB connection error:", err));
+    .catch(err => console.error("Error:", err));

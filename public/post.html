@@ -2,16 +2,31 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Просмотр публикации</title>
+  <title>Просмотр публикации | TechPlatform</title>
   <style>
     :root { --primary: #0071e3; --bg: #f5f5f7; }
     body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; }
     .post-container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-    .full-media { width: 100%; border-radius: 15px; margin-bottom: 25px; }
-    .full-media video, .full-media img, .full-media iframe { width: 100%; border-radius: 15px; display: block; }
-    .post-body { line-height: 1.6; font-size: 18px; color: #333; }
-    .back-link { display: inline-block; margin-bottom: 20px; text-decoration: none; color: var(--primary); font-weight: 500; }
+
+    /* Стили контента */
     .meta-info { color: #888; margin-bottom: 10px; font-size: 14px; }
+    .full-media { width: 100%; border-radius: 15px; margin-bottom: 25px; background: #000; overflow: hidden; aspect-ratio: 16/9; }
+    .full-media iframe, .full-media video, .full-media img { width: 100%; height: 100%; border: none; object-fit: cover; }
+    .post-body { line-height: 1.6; font-size: 18px; color: #333; margin-bottom: 30px; }
+    .interest-tag { color: var(--primary); margin-right: 12px; text-decoration: none; font-weight: 500; }
+    .back-link { display: inline-block; margin-bottom: 20px; text-decoration: none; color: var(--primary); font-weight: 500; }
+
+    /* Стили комментариев (как на главной) */
+    .comments-section { margin-top: 40px; border-top: 1px solid #eee; padding-top: 30px; }
+    .comment-item { display: flex; gap: 12px; margin-bottom: 15px; }
+    .comment-avatar { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; background: #eee; }
+    .comment-bubble { background: #f0f2f5; padding: 10px 15px; border-radius: 15px; flex-grow: 1; }
+    .comment-bubble strong { display: block; font-size: 13px; margin-bottom: 4px; }
+
+    .comment-input-area { display: flex; gap: 10px; margin-top: 25px; align-items: center; }
+    .comment-input { flex-grow: 1; padding: 12px 18px; border: 1px solid #ddd; border-radius: 25px; outline: none; font-size: 14px; }
+    .comment-send-btn { border: none; background: none; cursor: pointer; font-size: 20px; transition: 0.2s; }
+    .comment-send-btn:hover { transform: scale(1.2); }
   </style>
 </head>
 <body>
@@ -20,57 +35,131 @@
   <a href="/" class="back-link">← Назад в ленту</a>
 
   <div id="post-view">
-    <p>Загрузка контента...</p>
+    <p style="text-align: center; color: #888;">Загрузка публикации...</p>
   </div>
 
-  <div id="comments-section" style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
-    <h3>Комментарии</h3>
-    <div id="comments-list"></div>
+  <div class="comments-section">
+    <h3>Комментарии (<span id="comm-total">0</span>)</h3>
+    <div id="comments-list">
+    </div>
+
+    <div class="comment-input-area">
+      <input type="text" id="new-comment-text" class="comment-input" placeholder="Напишите свое мнение...">
+      <button onclick="addComment()" class="comment-send-btn">🚀</button>
+    </div>
   </div>
 </div>
 
 <script>
   const urlParams = new URLSearchParams(window.location.search);
   const postId = urlParams.get('id');
+  const currentUser = JSON.parse(localStorage.getItem('user'));
+
+  function getYouTubeEmbedUrl(url) {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
+  }
 
   async function loadFullPost() {
-    if (!postId) return window.location.href = '/';
+    if (!postId) { window.location.href = '/'; return; }
 
     try {
       const res = await fetch(`/api/content/single/${postId}`);
       const post = await res.json();
 
-      // Логика YouTube (как в ленте)
-      const getYT = (url) => {
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-        const match = url.match(regExp);
-        return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
-      };
-      const ytUrl = getYT(post.body);
+      const ytUrl = getYouTubeEmbedUrl(post.body);
 
+      document.title = `${post.title} | TechPlatform`;
       document.getElementById('post-view').innerHTML = `
-                <div class="meta-info">${post.category} • ${new Date(post.createdAt).toLocaleDateString()}</div>
-                <h1>${post.title}</h1>
+                <div class="meta-info">${post.category || 'Без категории'} • ${new Date(post.createdAt).toLocaleDateString()}</div>
+                <h1 style="margin-top: 0; font-size: 32px;">${post.title}</h1>
 
                 <div class="full-media">
                     ${post.mediaUrl
               ? (post.type === 'video' ? `<video src="${post.mediaUrl}" controls></video>` : `<img src="${post.mediaUrl}">`)
-              : (ytUrl ? `<iframe height="450" src="${ytUrl}" frameborder="0" allowfullscreen></iframe>` : '')
+              : (ytUrl ? `<iframe src="${ytUrl}" allowfullscreen></iframe>` : '')
       }
                 </div>
 
                 <div class="post-body">
-                    ${post.body && !ytUrl ? post.body : (post.preview || 'Нет дополнительного текста')}
+                    ${!ytUrl && post.body ? post.body.replace(/\n/g, '<br>') : (post.preview || 'Нет текста')}
                 </div>
 
-                <div style="margin-top: 20px;">
-                    ${(post.tags || []).map(t => `<span style="color:var(--primary); margin-right:10px;">#${t}</span>`).join('')}
+                <div style="margin-bottom: 20px;">
+                    ${(post.tags || []).map(t => `<span class="interest-tag">#${t}</span>`).join('')}
                 </div>
             `;
+
+      // Загружаем комментарии сразу после загрузки поста
+      loadComments();
     } catch (e) {
-      document.getElementById('post-view').innerHTML = "Ошибка загрузки поста.";
+      document.getElementById('post-view').innerHTML = "<h2>Ошибка: Публикация не найдена</h2>";
     }
   }
+
+  // --- ЛОГИКА КОММЕНТАРИЕВ ---
+  async function loadComments() {
+    const list = document.getElementById('comments-list');
+    const countSpan = document.getElementById('comm-total');
+
+    try {
+      const res = await fetch(`/api/comments/${postId}`);
+      const comments = await res.json();
+
+      countSpan.innerText = comments.length;
+
+      if (comments.length === 0) {
+        list.innerHTML = "<p style='color: #888; font-size: 14px;'>Пока нет комментариев. Будьте первым!</p>";
+        return;
+      }
+
+      list.innerHTML = comments.map(c => `
+                <div class="comment-item">
+                    <img src="${c.authorId?.avatarUrl || 'https://via.placeholder.com/35'}" class="comment-avatar">
+                    <div class="comment-bubble">
+                        <strong>${c.authorId?.username || 'Пользователь'}</strong>
+                        <div>${c.text}</div>
+                    </div>
+                </div>
+            `).join('');
+    } catch (e) {
+      list.innerHTML = "Ошибка загрузки комментариев";
+    }
+  }
+
+  async function addComment() {
+    const input = document.getElementById('new-comment-text');
+    const text = input.value.trim();
+    if (!text) return;
+
+    if (!currentUser) { alert("Войдите, чтобы комментировать"); return; }
+
+    try {
+      const res = await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          postId,
+          userId: currentUser.id || currentUser._id,
+          text
+        })
+      });
+
+      if (res.ok) {
+        input.value = '';
+        loadComments(); // Перезагружаем список
+      }
+    } catch (e) {
+      alert("Не удалось отправить комментарий");
+    }
+  }
+
+  // Обработка нажатия Enter
+  document.getElementById('new-comment-text').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') addComment();
+  });
 
   loadFullPost();
 </script>
