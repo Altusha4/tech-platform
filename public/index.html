@@ -2,10 +2,11 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tech Platform - Инновационная Лента</title>
     <style>
         :root { --primary: #0071e3; --bg: #f5f5f7; --card-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); margin: 0; color: #1d1d1f; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); margin: 0; color: #1d1d1f; overflow-y: scroll; }
 
         .navbar { background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); padding: 12px 40px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; }
         .logo { font-size: 20px; font-weight: 700; color: var(--primary); text-decoration: none; letter-spacing: -0.5px; }
@@ -21,15 +22,11 @@
         }
         .global-search:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(0,113,227,0.1); }
 
-        /* Лейаут: Контент + Сайдбар */
+        /* Лейаут */
         .main-layout { display: grid; grid-template-columns: 1fr 300px; gap: 30px; }
 
-        @media (max-width: 900px) {
-            .main-layout { grid-template-columns: 1fr; }
-            .sidebar { display: none; }
-        }
-
-        .category-bar { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
+        .category-bar { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
+        .category-bar::-webkit-scrollbar { height: 4px; }
         .cat-btn {
             padding: 8px 18px; border-radius: 20px; border: none;
             background: #e8e8ed; cursor: pointer; font-weight: 500; transition: 0.2s; white-space: nowrap; color: #1d1d1f;
@@ -45,6 +42,7 @@
 
         .grid { display: grid; grid-template-columns: 1fr; gap: 25px; }
 
+        /* СТИЛИ КАРТОЧЕК */
         .card {
             background: white; border-radius: 18px; padding: 24px;
             box-shadow: var(--card-shadow); transition: 0.3s;
@@ -55,25 +53,11 @@
 
         .type-tag { font-size: 12px; font-weight: 600; color: var(--primary); text-transform: uppercase; margin-bottom: 8px; display: block; }
 
-        /* ИСПРАВЛЕННЫЙ КОНТЕЙНЕР: Ограничиваем высоту изображений */
         .media-container {
-            width: 100%;
-            max-height: 380px; /* Ограничение высоты */
-            border-radius: 12px;
-            overflow: hidden;
-            margin: 15px 0;
-            background: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
+            width: 100%; max-height: 380px; border-radius: 12px; overflow: hidden;
+            margin: 15px 0; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer;
         }
-        .media-container img, .media-container video {
-            width: 100%;
-            height: auto;
-            max-height: 380px;
-            object-fit: contain; /* Картинка не обрезается и вписывается в блок */
-        }
+        .media-container img, .media-container video { width: 100%; height: auto; max-height: 380px; object-fit: contain; }
 
         .interest-tag {
             display: inline-block; background: #f5f5f7; color: #515154;
@@ -89,13 +73,37 @@
         }
         .like-btn.active { background: #ff3b30; color: white; }
 
+        /* САЙДБАР */
         .sidebar-box { background: white; padding: 24px; border-radius: 18px; box-shadow: var(--card-shadow); position: sticky; top: 100px; }
         .sidebar-box h3 { margin-top: 0; font-size: 18px; margin-bottom: 15px; }
+
+        /* СКЕЛЕТОНЫ (Загрузка) */
+        @keyframes skeleton-pulse {
+            0% { background-color: #e2e2e7; }
+            50% { background-color: #f2f2f7; }
+            100% { background-color: #e2e2e7; }
+        }
+        .skeleton-card { background: white; border-radius: 18px; padding: 24px; height: 320px; display: flex; flex-direction: column; gap: 15px; border: 1px solid rgba(0,0,0,0.05); }
+        .sk-box { background: #e2e2e7; border-radius: 8px; animation: skeleton-pulse 1.5s infinite ease-in-out; }
+
+        /* ПУСТЫЕ СОСТОЯНИЯ */
+        .empty-state { grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: white; border-radius: 18px; border: 2px dashed #d2d2d7; color: #86868b; }
+
+        /* АДАПТИВНОСТЬ */
+        @media (max-width: 900px) {
+            .main-layout { grid-template-columns: 1fr; }
+            .sidebar { display: none; }
+            .navbar { padding: 12px 20px; }
+        }
 
         .comments-section { margin-top: 15px; padding-top: 15px; border-top: 1px dashed #eee; display: none; }
         .comment-item { display: flex; gap: 10px; margin-bottom: 12px; font-size: 13px; }
         .comment-avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; }
         .comment-bubble { background: #f5f5f7; padding: 10px; border-radius: 12px; flex-grow: 1; }
+        .comment-input-area { display: flex; gap: 8px; margin-top: 15px; }
+        .comment-input { flex-grow: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 18px; font-size: 13px; outline: none; }
+        .comment-send-btn { border:none; background:none; cursor:pointer; font-size: 16px; transition: transform 0.2s; }
+        .comment-send-btn:hover { transform: scale(1.2); }
     </style>
 </head>
 <body>
@@ -158,10 +166,9 @@
     function renderUserHeader(user) {
         const authSection = document.getElementById('auth-section');
         const miniPlaceholder = document.getElementById('mini-avatar-placeholder');
-
         const avatarHtml = user.avatarUrl
             ? `<img src="${user.avatarUrl}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;">`
-            : `👤`;
+            : `<div style="width:32px; height:32px; border-radius:50%; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; font-size:14px;">${user.username[0].toUpperCase()}</div>`;
 
         if(miniPlaceholder) miniPlaceholder.innerHTML = user.avatarUrl
             ? `<img src="${user.avatarUrl}" style="width:35px; height:35px; border-radius:50%; object-fit:cover;">`
@@ -172,7 +179,7 @@
             <a href="/profile.html" style="text-decoration:none; color:inherit; font-weight:600; display:flex; align-items:center; gap:8px;">
                 ${avatarHtml} ${user.username}
             </a>
-            <button onclick="logout()" style="background:none; border:1px solid #d2d2d7; padding:6px 12px; border-radius:8px; cursor:pointer;">Выход</button>
+            <button onclick="logout()" style="background:none; border:1px solid #d2d2d7; padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px;">Выход</button>
         `;
     }
 
@@ -195,15 +202,35 @@
         renderPosts(filtered);
     }
 
+    function showSkeletons() {
+        const feed = document.getElementById('feed');
+        feed.innerHTML = Array(3).fill(`
+            <div class="skeleton-card">
+                <div class="sk-box" style="width: 30%; height: 15px;"></div>
+                <div class="sk-box" style="width: 70%; height: 25px;"></div>
+                <div class="sk-box" style="width: 100%; height: 150px;"></div>
+                <div class="sk-box" style="width: 100%; height: 15px;"></div>
+            </div>
+        `).join('');
+    }
+
     async function fetchFeed() {
         const user = JSON.parse(localStorage.getItem('user'));
         const userId = user?.id || user?._id;
+
+        showSkeletons();
+
         try {
             const response = await fetch(`/api/content?userId=${userId}&category=${currentCategory}`);
             allPosts = await response.json();
-            renderPosts(allPosts);
-            updateTrendingTags(allPosts);
-        } catch (e) { console.error(e); }
+            // Небольшая задержка для плавности
+            setTimeout(() => {
+                renderPosts(allPosts);
+                updateTrendingTags(allPosts);
+            }, 300);
+        } catch (e) {
+            document.getElementById('feed').innerHTML = '<div class="empty-state">Ошибка загрузки.</div>';
+        }
     }
 
     function renderPosts(data) {
@@ -212,7 +239,12 @@
         const userId = user?.id || user?._id;
 
         if (data.length === 0) {
-            feed.innerHTML = `<p style="text-align:center; padding:40px; color:#86868b;">Ничего не найдено...</p>`;
+            feed.innerHTML = `
+                <div class="empty-state">
+                    <div style="font-size: 40px; margin-bottom: 10px;">🔎</div>
+                    <h3>Ничего не найдено</h3>
+                    <p>Попробуйте изменить запрос или категорию</p>
+                </div>`;
             return;
         }
 
