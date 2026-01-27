@@ -178,6 +178,25 @@ app.get('/api/users/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// --- ПОЛУЧЕНИЕ ПОСТОВ КОНКРЕТНОГО ПОЛЬЗОВАТЕЛЯ ---
+app.get('/api/content/user/:userId', async (req, res) => {
+    try {
+        const posts = await Content.find({ authorId: req.params.userId })
+            .sort({ createdAt: -1 }) // Сначала новые
+            .lean();
+        res.json(posts);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/content/:id', async (req, res) => {
+    try {
+        await Content.findByIdAndDelete(req.params.id);
+        res.json({ message: "Удалено" });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 mongoose.connect(process.env.MONGO_URI)
     .then(() => {
         console.log("MongoDB Connected Successfully");
