@@ -11,6 +11,7 @@ const User = require('./models/User');
 const Content = require('./models/Content');
 const Notification = require('./models/Notification');
 const Follow = require('./models/Follow');
+const Comment = require('./models/Comment');
 
 const app = express();
 const publicPath = path.join(__dirname, '..', 'public');
@@ -188,6 +189,39 @@ app.get('/api/notifications/:userId', async (req, res) => {
     try {
         const notes = await Notification.find({ userId: req.params.userId }).populate('fromUserId', 'username').sort({ createdAt: -1 });
         res.json(notes);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- 7. КОММЕНТАРИИ ---
+
+// Получить комментарии к посту
+app.get('/api/comments/:postId', async (req, res) => {
+    try {
+        const comments = await Comment.find({ postId: req.params.postId })
+            .populate('authorId', 'username avatarUrl')
+            .sort({ createdAt: -1 });
+        res.json(comments);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Добавить комментарий
+app.post('/api/comments', async (req, res) => {
+    try {
+        const { postId, userId, text } = req.body;
+
+        const newComment = new Comment({
+            postId,
+            authorId: userId,
+            text
+        });
+
+        await newComment.save();
+
+        // Обновляем счетчик комментариев в самом посте
+        await Content.findByIdAndUpdate(postId, { $inc: { 'stats.commentsCount': 1 } });
+
+        const populatedComment = await newComment.populate('authorId', 'username avatarUrl');
+        res.status(201).json(populatedComment);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
