@@ -2,214 +2,293 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Мой профиль</title>
+  <title>Мой профиль | TechPlatform</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
   <style>
-    body { font-family: -apple-system, sans-serif; background: #f5f5f7; margin: 0; padding: 20px; }
-    .profile-card { background: white; max-width: 500px; margin: 50px auto; padding: 30px; border-radius: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-    .avatar { width: 80px; height: 80px; background: #0071e3; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 20px; overflow: hidden; }
-    .avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .interest-tag { display: inline-block; background: #e8f2ff; color: #0071e3; padding: 5px 12px; border-radius: 15px; font-size: 13px; margin: 5px 5px 5px 0; font-weight: 500; }
-    .btn-edit { background: #0071e3; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-top: 20px; }
-    .btn-save { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
-    .hidden { display: none; }
-    .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-    .upload-section { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
+    :root { --primary: #0071e3; --bg: #f5f5f7; --red: #ff3b30; }
+    body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; }
+    .profile-card { background: white; max-width: 850px; margin: 20px auto; padding: 35px; border-radius: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
 
-    /* Стили для контейнера обрезки */
-    #cropper-container { margin-top: 15px; border: 1px dashed #ccc; padding: 10px; border-radius: 8px; background: #fafafa; }
-    .cropper-wrapper { max-height: 300px; overflow: hidden; }
-    .btn-crop { background: #0071e3; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; margin-top: 10px; font-size: 12px; }
+    /* Шапка профиля */
+    .profile-header { display: flex; align-items: center; gap: 25px; margin-bottom: 35px; }
+    .avatar { width: 110px; height: 110px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 45px; overflow: hidden; border: 4px solid #fff; box-shadow: 0 0 15px rgba(0,0,0,0.1); }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* Вкладки */
+    .tabs { display: flex; border-bottom: 1px solid #eee; margin-bottom: 30px; gap: 30px; }
+    .tab-btn { padding: 12px 0; border: none; background: none; cursor: pointer; font-size: 16px; color: #888; border-bottom: 3px solid transparent; transition: 0.3s; }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: bold; }
+
+    /* Сетка постов */
+    .posts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+    .post-item { background: #fff; border: 1px solid #f0f0f0; border-radius: 18px; overflow: hidden; transition: 0.3s; }
+    .post-item:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+    .post-preview { width: 100%; height: 150px; background: #1a1a1a; overflow: hidden; position: relative; }
+    .post-preview img, .post-preview video { width: 100%; height: 100%; object-fit: cover; }
+    .post-content { padding: 18px; }
+    .post-title { font-size: 15px; font-weight: 600; margin: 0 0 12px 0; height: 42px; overflow: hidden; line-height: 1.4; }
+
+    /* Статистика и кнопки действий */
+    .post-stats { display: flex; gap: 12px; font-size: 13px; color: #999; margin-bottom: 15px; }
+    .post-actions { display: flex; gap: 10px; }
+    .btn-action { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #eee; cursor: pointer; font-size: 13px; background: #fff; transition: 0.2s; }
+    .btn-delete:hover { background: var(--red); color: white; border-color: var(--red); }
+    .btn-edit-post:hover { background: var(--primary); color: white; border-color: var(--primary); }
+
+    /* Стили для интерактивных хэштегов */
+    .interests-container { background: #f9f9fb; padding: 30px; border-radius: 20px; border: 1px solid #f0f0f5; }
+    .interests-grid { display: flex; flex-wrap: wrap; gap: 12px; margin: 25px 0; }
+    .interest-item { cursor: pointer; }
+    .interest-item input { display: none; }
+    .interest-item .tag-box {
+      display: inline-block; padding: 10px 22px; border-radius: 25px;
+      background: #fff; border: 2px solid #eee; color: #666; font-weight: 500; transition: 0.2s; user-select: none;
+    }
+    .interest-item input:checked + .tag-box {
+      background: var(--primary); color: white; border-color: var(--primary); transform: scale(1.05);
+    }
+
+    .btn-save-interests { width: 100%; background: var(--primary); color: white; border: none; padding: 16px; border-radius: 14px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px; }
+
+    /* Режим редактирования */
+    .hidden { display: none; }
+    .upload-section { margin-bottom: 25px; padding: 20px; border: 2px dashed #eee; border-radius: 15px; text-align: center; }
+    #cropper-container { margin-top: 20px; }
+    .cropper-wrapper { max-height: 350px; border-radius: 12px; overflow: hidden; }
   </style>
 </head>
 <body>
 
 <div class="profile-card">
   <div id="view-mode">
-    <div class="avatar" id="avatar-circle">?</div>
-    <h2 id="display-name">Загрузка...</h2>
-    <p id="display-email" style="color: #666;"></p>
-
-    <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
-      <strong>Мои интересы:</strong>
-      <div id="interests-list" style="margin-top: 10px;"></div>
+    <div class="profile-header">
+      <div class="avatar" id="avatar-circle">?</div>
+      <div>
+        <h2 id="display-name" style="margin: 0; font-size: 26px;">Загрузка...</h2>
+        <p id="display-email" style="color: #666; margin: 5px 0 0 0;"></p>
+      </div>
+      <button onclick="toggleMode()" style="margin-left: auto; background: #f0f0f2; border: none; padding: 12px 18px; border-radius: 12px; cursor: pointer; font-weight: 500;">⚙️ Сменить фото</button>
     </div>
 
-    <button class="btn-edit" onclick="toggleMode()">Редактировать профиль</button>
-    <br>
-    <a href="/" style="display: block; margin-top: 20px; color: #0071e3; text-decoration: none; font-size: 14px;">← На главную</a>
-  </div>
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-posts" onclick="switchTab('posts')">Мои публикации <span id="post-count"></span></button>
+      <button class="tab-btn" id="tab-interests" onclick="switchTab('interests')">Интересы</button>
+    </div>
 
-  <div id="edit-mode" class="hidden">
-    <h3>Редактировать профиль</h3>
+    <div id="content-posts">
+      <div id="my-posts-list" class="posts-grid"></div>
+    </div>
 
-    <div class="upload-section">
-      <label style="display: block; margin-bottom: 10px; font-weight: 600;">Фото профиля:</label>
-      <input type="file" id="avatar-input" accept="image/*" onchange="initCropper(event)">
+    <div id="content-interests" class="hidden">
+      <div class="interests-container">
+        <h3 style="margin-top:0">Настройка ленты 🎯</h3>
+        <p style="color:#666; font-size:14px">Выберите темы, которые вам интересны. Мы используем их для подбора персональных рекомендаций.</p>
 
-      <div id="cropper-container" class="hidden">
-        <div class="cropper-wrapper">
-          <img id="cropper-image" src="" alt="Source">
+        <div class="interests-grid">
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="ai"><span class="tag-box">#AI</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="javascript"><span class="tag-box">#JavaScript</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="mongodb"><span class="tag-box">#MongoDB</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="node"><span class="tag-box">#Node.js</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="apple"><span class="tag-box">#Apple</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="design"><span class="tag-box">#Design</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="backend"><span class="tag-box">#Backend</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="gadgets"><span class="tag-box">#Gadgets</span></label>
         </div>
-        <button type="button" class="btn-crop" onclick="applyCrop()">Подтвердить обрезку</button>
+
+        <button onclick="updateInterests()" id="interest-save-btn" class="btn-save-interests">Обновить интересы</button>
       </div>
     </div>
 
-    <label style="font-weight: 600;">Интересы:</label>
-    <div class="edit-grid">
-      <label><input type="checkbox" name="edit-interest" value="mongodb"> MongoDB</label>
-      <label><input type="checkbox" name="edit-interest" value="javascript"> JavaScript</label>
-      <label><input type="checkbox" name="edit-interest" value="node"> Node.js</label>
-      <label><input type="checkbox" name="edit-interest" value="backend"> Backend</label>
-      <label><input type="checkbox" name="edit-interest" value="mobile"> Mobile Dev</label>
-      <label><input type="checkbox" name="edit-interest" value="apple"> Apple / Tech</label>
+    <a href="/" style="display: block; margin-top: 35px; color: var(--primary); text-decoration: none; font-size: 15px; font-weight: 500;">← Вернуться на главную</a>
+  </div>
+
+  <div id="edit-mode" class="hidden">
+    <h3>Редактирование профиля</h3>
+    <div class="upload-section">
+      <p style="margin-bottom: 15px; color: #666;">Выберите новое фото профиля</p>
+      <input type="file" id="avatar-input" accept="image/*" onchange="initCropper(event)">
+
+      <div id="cropper-container" class="hidden">
+        <div class="cropper-wrapper"><img id="cropper-image" src=""></div>
+        <button type="button" onclick="applyCrop()" style="background:var(--primary); color:#fff; border:none; padding:12px 20px; border-radius:10px; margin-top:15px; cursor:pointer; font-weight: 600;">Обрезать фото</button>
+      </div>
     </div>
 
-    <div style="margin-top: 25px; display: flex; gap: 10px;">
-      <button class="btn-save" id="save-btn" onclick="saveChanges()">Сохранить все</button>
-      <button onclick="toggleMode()" style="background: #eee; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">Отмена</button>
+    <div style="display: flex; gap: 12px;">
+      <button onclick="saveAvatarOnly()" id="save-avatar-btn" style="background:#28a745; color:#fff; border:none; padding:15px 25px; border-radius:12px; cursor:pointer; flex:2; font-weight: bold;">Сохранить фото</button>
+      <button onclick="toggleMode()" style="background:#eee; border:none; padding:15px 25px; border-radius:12px; cursor:pointer; flex:1;">Отмена</button>
     </div>
   </div>
 </div>
 
 <script>
   let currentUser = JSON.parse(localStorage.getItem('user'));
-  let cropper;      // Экземпляр Cropper
-  let croppedBlob;  // Результат обрезки
+  let cropper;
+  let croppedBlob;
 
   function init() {
-    if (!currentUser) {
-      window.location.href = '/login.html';
-      return;
-    }
+    if (!currentUser) { window.location.href = '/login.html'; return; }
     renderData();
+    loadMyPosts();
   }
 
   function renderData() {
     const avatarCircle = document.getElementById('avatar-circle');
-
-    if (currentUser.avatarUrl) {
-      avatarCircle.innerHTML = `<img src="${currentUser.avatarUrl}" alt="Avatar">`;
-    } else {
-      avatarCircle.innerText = currentUser.username[0].toUpperCase();
-    }
+    avatarCircle.innerHTML = currentUser.avatarUrl
+            ? `<img src="${currentUser.avatarUrl}">`
+            : currentUser.username[0].toUpperCase();
 
     document.getElementById('display-name').innerText = currentUser.username;
     document.getElementById('display-email').innerText = currentUser.email;
 
-    const list = document.getElementById('interests-list');
-    list.innerHTML = (currentUser.interests && currentUser.interests.length > 0)
-            ? currentUser.interests.map(i => `<span class="interest-tag">#${i}</span>`).join('')
-            : 'Не выбрано';
-
-    const checkboxes = document.querySelectorAll('input[name="edit-interest"]');
-    checkboxes.forEach(cb => {
-      cb.checked = currentUser.interests ? currentUser.interests.includes(cb.value) : false;
+    // Инициализация чекбоксов хэштегов
+    document.querySelectorAll('input[name="profile-interest"]').forEach(cb => {
+      cb.checked = currentUser.interests?.includes(cb.value);
     });
   }
 
+  // --- ЛОГИКА ВКЛАДОК ---
+  function switchTab(tab) {
+    document.getElementById('tab-posts').classList.toggle('active', tab === 'posts');
+    document.getElementById('tab-interests').classList.toggle('active', tab === 'interests');
+    document.getElementById('content-posts').classList.toggle('hidden', tab !== 'posts');
+    document.getElementById('content-interests').classList.toggle('hidden', tab !== 'interests');
+    if(tab === 'posts') loadMyPosts();
+  }
+
+  // --- ЗАГРУЗКА ПУБЛИКАЦИЙ ---
+  async function loadMyPosts() {
+    const list = document.getElementById('my-posts-list');
+    const countSpan = document.getElementById('post-count');
+    list.innerHTML = "<div style='grid-column: 1/-1; text-align:center;'>Загрузка...</div>";
+
+    try {
+      const userId = currentUser.id || currentUser._id;
+      const res = await fetch(`/api/content/user/${userId}`);
+      const posts = await res.json();
+
+      countSpan.innerText = posts.length > 0 ? `(${posts.length})` : '';
+
+      if (posts.length === 0) {
+        list.innerHTML = "<p style='color:#999; grid-column: 1/-1; text-align:center; padding: 40px;'>У вас пока нет публикаций.</p>";
+        return;
+      }
+
+      list.innerHTML = posts.map(post => `
+        <div class="post-item" id="post-${post._id}">
+          <div class="post-preview">
+            ${post.mediaUrl
+              ? (post.type === 'video' ? `<video src="${post.mediaUrl}"></video>` : `<img src="${post.mediaUrl}">`)
+              : `<div style="padding:20px; color:#fff; font-size:12px; text-align:center; height:100%; display:flex; align-items:center;">${post.title}</div>`
+      }
+          </div>
+          <div class="post-content">
+            <div class="post-title">${post.title}</div>
+            <div class="post-stats">
+              <span>❤️ ${post.likes || 0}</span>
+              <span>💬 ${post.stats?.commentsCount || 0}</span>
+            </div>
+            <div class="post-actions">
+              <button class="btn-action btn-edit-post" onclick="editPost('${post._id}')">⚙️</button>
+              <button class="btn-action btn-delete" onclick="deletePost('${post._id}')">🗑️</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) { list.innerHTML = "Ошибка связи с сервером"; }
+  }
+
+  // --- ОБНОВЛЕНИЕ ИНТЕРЕСОВ (#ХЭШТЕГИ) ---
+  async function updateInterests() {
+    const btn = document.getElementById('interest-save-btn');
+    const selected = Array.from(document.querySelectorAll('input[name="profile-interest"]:checked')).map(cb => cb.value);
+    const userId = currentUser.id || currentUser._id;
+
+    btn.innerText = "Сохранение...";
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/users/update', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, interests: selected })
+      });
+
+      if(res.ok) {
+        const data = await res.json();
+        const updatedUser = { ...data.user, id: userId };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        currentUser = updatedUser;
+        alert("Интересы обновлены! Лента будет подстроена под вас.");
+      }
+    } catch (e) { alert("Ошибка сохранения"); }
+    finally { btn.innerText = "Обновить интересы"; btn.disabled = false; }
+  }
+
+  // --- УДАЛЕНИЕ ---
+  async function deletePost(postId) {
+    if(!confirm("Вы уверены, что хотите удалить эту публикацию?")) return;
+    try {
+      const res = await fetch(`/api/content/${postId}`, { method: 'DELETE' });
+      if(res.ok) {
+        document.getElementById(`post-${postId}`).style.opacity = '0';
+        setTimeout(() => loadMyPosts(), 300);
+      }
+    } catch (e) { alert("Не удалось удалить пост"); }
+  }
+
+  function editPost(id) { alert("Редактирование в разработке 🛠️"); }
+
+  // --- РАБОТА С АВАТАРОМ (CROPPER) ---
   function toggleMode() {
     document.getElementById('view-mode').classList.toggle('hidden');
     document.getElementById('edit-mode').classList.toggle('hidden');
-    // Сбрасываем кроппер при выходе
-    if (cropper) {
-      cropper.destroy();
-      document.getElementById('cropper-container').classList.add('hidden');
-      croppedBlob = null;
-    }
+    if (cropper) cropper.destroy();
   }
 
-  // --- ЛОГИКА ОБРЕЗКИ ---
   function initCropper(event) {
     const file = event.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = document.getElementById('cropper-image');
       img.src = e.target.result;
       document.getElementById('cropper-container').classList.remove('hidden');
-
       if (cropper) cropper.destroy();
-      cropper = new Cropper(img, {
-        aspectRatio: 1, // Всегда квадрат
-        viewMode: 1,
-        autoCropArea: 1,
-      });
+      cropper = new Cropper(img, { aspectRatio: 1, viewMode: 1 });
     };
     reader.readAsDataURL(file);
   }
 
   function applyCrop() {
-    if (!cropper) return;
-    // Создаем квадрат 400x400
-    cropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob((blob) => {
+    cropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob(blob => {
       croppedBlob = blob;
       alert("Фото обрезано!");
       document.getElementById('cropper-container').classList.add('hidden');
     }, 'image/jpeg');
   }
 
-  // --- СОХРАНЕНИЕ ---
-  async function saveChanges() {
-    const saveBtn = document.getElementById('save-btn');
-    saveBtn.innerText = "Сохранение...";
-    saveBtn.disabled = true;
-
+  async function saveAvatarOnly() {
+    if(!croppedBlob) { alert("Сначала выберите фото и нажмите 'Обрезать'"); return; }
     const userId = currentUser.id || currentUser._id;
+    const btn = document.getElementById('save-avatar-btn');
+    btn.innerText = "Загрузка...";
 
-    // 1. Загружаем обрезанное фото, если оно есть
-    if (croppedBlob) {
-      const formData = new FormData();
-      formData.append('avatar', croppedBlob, 'avatar.jpg');
-      formData.append('userId', userId);
-
-      try {
-        const uploadRes = await fetch('/api/users/upload-avatar', {
-          method: 'POST',
-          body: formData
-        });
-        const uploadData = await uploadRes.json();
-        if (uploadRes.ok) {
-          currentUser = uploadData.user;
-        }
-      } catch (err) {
-        console.error("Ошибка загрузки фото:", err);
-      }
-    }
-
-    // 2. Сохраняем интересы
-    const selectedInterests = Array.from(document.querySelectorAll('input[name="edit-interest"]:checked'))
-            .map(cb => cb.value);
+    const fd = new FormData();
+    fd.append('avatar', croppedBlob);
+    fd.append('userId', userId);
 
     try {
-      const res = await fetch('/api/users/update', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: userId,
-          interests: selectedInterests
-        })
-      });
-
-      if (res.ok) {
+      const res = await fetch('/api/users/upload-avatar', { method: 'POST', body: fd });
+      if(res.ok) {
         const data = await res.json();
-        const finalUserData = { ...data.user, id: data.user._id };
-        localStorage.setItem('user', JSON.stringify(finalUserData));
-        currentUser = finalUserData;
-
-        renderData();
-        toggleMode();
-        alert("Профиль успешно обновлен!");
+        currentUser.avatarUrl = data.user.avatarUrl;
+        localStorage.setItem('user', JSON.stringify(currentUser));
+        location.reload();
       }
-    } catch (err) {
-      alert("Ошибка при сохранении данных");
-    } finally {
-      saveBtn.innerText = "Сохранить все";
-      saveBtn.disabled = false;
-    }
+    } catch (e) { alert("Ошибка загрузки"); btn.innerText = "Сохранить фото"; }
   }
 
   init();
