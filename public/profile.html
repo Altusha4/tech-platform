@@ -13,17 +13,10 @@
 
     /* Шапка профиля */
     .profile-header { display: flex; align-items: center; gap: 25px; margin-bottom: 35px; }
-
     .avatar-container { position: relative; width: 110px; height: 110px; cursor: pointer; }
     .avatar { width: 100%; height: 100%; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 45px; overflow: hidden; border: 4px solid #fff; box-shadow: 0 0 15px rgba(0,0,0,0.1); transition: 0.3s; }
     .avatar img { width: 100%; height: 100%; object-fit: cover; }
-
-    .avatar-edit-overlay {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.4); border-radius: 50%; display: flex;
-      align-items: center; justify-content: center; color: white;
-      font-size: 12px; font-weight: 600; opacity: 0; transition: 0.3s;
-    }
+    .avatar-edit-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 600; opacity: 0; transition: 0.3s; }
     .avatar-container:hover .avatar-edit-overlay { opacity: 1; }
 
     /* Вкладки */
@@ -40,33 +33,30 @@
     .post-content { padding: 18px; }
     .post-title { font-size: 15px; font-weight: 600; margin: 0 0 12px 0; height: 42px; overflow: hidden; line-height: 1.4; }
 
-    /* Статистика и кнопки действий */
     .post-stats { display: flex; gap: 12px; font-size: 13px; color: #999; margin-bottom: 15px; }
     .post-actions { display: flex; gap: 10px; }
     .btn-action { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #eee; cursor: pointer; font-size: 13px; background: #fff; transition: 0.2s; }
     .btn-delete:hover { background: var(--red); color: white; border-color: var(--red); }
     .btn-edit-post:hover { background: var(--primary); color: white; border-color: var(--primary); }
 
-    /* Стили для интерактивных хэштегов */
+    /* Интересы */
     .interests-container { background: #f9f9fb; padding: 30px; border-radius: 20px; border: 1px solid #f0f0f5; }
     .interests-grid { display: flex; flex-wrap: wrap; gap: 12px; margin: 25px 0; }
     .interest-item { cursor: pointer; }
     .interest-item input { display: none; }
-    .interest-item .tag-box {
-      display: inline-block; padding: 10px 22px; border-radius: 25px;
-      background: #fff; border: 2px solid #eee; color: #666; font-weight: 500; transition: 0.2s; user-select: none;
-    }
-    .interest-item input:checked + .tag-box {
-      background: var(--primary); color: white; border-color: var(--primary); transform: scale(1.05);
-    }
-
+    .interest-item .tag-box { display: inline-block; padding: 10px 22px; border-radius: 25px; background: #fff; border: 2px solid #eee; color: #666; font-weight: 500; transition: 0.2s; user-select: none; }
+    .interest-item input:checked + .tag-box { background: var(--primary); color: white; border-color: var(--primary); transform: scale(1.05); }
     .btn-save-interests { width: 100%; background: var(--primary); color: white; border: none; padding: 16px; border-radius: 14px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px; }
 
-    /* Режим редактирования */
+    /* Модальное окно редактирования */
+    .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+    .modal-content { background: white; padding: 30px; border-radius: 20px; width: 90%; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+    .modal-content input, .modal-content textarea, .modal-content select { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-family: inherit; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+
     .hidden { display: none; }
     .upload-section { margin-bottom: 25px; padding: 20px; border: 2px dashed #eee; border-radius: 15px; text-align: center; }
-    #cropper-container { margin-top: 20px; }
-    .cropper-wrapper { max-height: 350px; border-radius: 12px; overflow: hidden; }
+    .cropper-wrapper { max-height: 350px; border-radius: 12px; overflow: hidden; margin-top: 20px; }
   </style>
 </head>
 <body>
@@ -93,16 +83,12 @@
     <div id="content-posts">
       <div id="my-posts-list" class="posts-grid"></div>
     </div>
-
     <div id="content-liked" class="hidden">
       <div id="liked-posts-list" class="posts-grid"></div>
     </div>
-
     <div id="content-interests" class="hidden">
       <div class="interests-container">
         <h3 style="margin-top:0">Настройка ленты 🎯</h3>
-        <p style="color:#666; font-size:14px">Выберите темы, которые вам интересны. Мы используем их для подбора персональных рекомендаций.</p>
-
         <div class="interests-grid">
           <label class="interest-item"><input type="checkbox" name="profile-interest" value="ai"><span class="tag-box">#AI</span></label>
           <label class="interest-item"><input type="checkbox" name="profile-interest" value="javascript"><span class="tag-box">#JavaScript</span></label>
@@ -111,31 +97,49 @@
           <label class="interest-item"><input type="checkbox" name="profile-interest" value="apple"><span class="tag-box">#Apple</span></label>
           <label class="interest-item"><input type="checkbox" name="profile-interest" value="design"><span class="tag-box">#Design</span></label>
           <label class="interest-item"><input type="checkbox" name="profile-interest" value="backend"><span class="tag-box">#Backend</span></label>
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="gadgets"><span class="tag-box">#Gadgets</span></label>
         </div>
-
         <button onclick="updateInterests()" id="interest-save-btn" class="btn-save-interests">Обновить интересы</button>
       </div>
     </div>
-
-    <a href="/" style="display: block; margin-top: 35px; color: var(--primary); text-decoration: none; font-size: 15px; font-weight: 500;">← Вернуться на главную</a>
+    <a href="/" style="display: block; margin-top: 35px; color: var(--primary); text-decoration: none; font-size: 15px;">← Вернуться на главную</a>
   </div>
 
   <div id="edit-mode" class="hidden">
     <h3>Редактирование профиля</h3>
     <div class="upload-section">
-      <p style="margin-bottom: 15px; color: #666;">Выберите новое фото профиля</p>
       <input type="file" id="avatar-input" accept="image/*" onchange="initCropper(event)">
-
       <div id="cropper-container" class="hidden">
         <div class="cropper-wrapper"><img id="cropper-image" src=""></div>
-        <button type="button" onclick="applyCrop()" style="background:var(--primary); color:#fff; border:none; padding:12px 20px; border-radius:10px; margin-top:15px; cursor:pointer; font-weight: 600;">Обрезать фото</button>
+        <button type="button" onclick="applyCrop()" style="background:var(--primary); color:#fff; border:none; padding:12px 20px; border-radius:10px; margin-top:15px; cursor:pointer;">Обрезать фото</button>
       </div>
     </div>
-
     <div style="display: flex; gap: 12px;">
       <button onclick="saveAvatarOnly()" id="save-avatar-btn" style="background:#28a745; color:#fff; border:none; padding:15px 25px; border-radius:12px; cursor:pointer; flex:2; font-weight: bold;">Сохранить фото</button>
       <button onclick="toggleMode()" style="background:#eee; border:none; padding:15px 25px; border-radius:12px; cursor:pointer; flex:1;">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<div id="edit-post-modal" class="modal">
+  <div class="modal-content">
+    <h3 style="margin-top:0">Редактировать пост</h3>
+    <input type="hidden" id="edit-post-id">
+    <label style="font-size:12px; color:#666;">Заголовок</label>
+    <input type="text" id="edit-post-title" placeholder="Заголовок">
+    <label style="font-size:12px; color:#666;">Краткое описание</label>
+    <input type="text" id="edit-post-preview" placeholder="Превью">
+    <label style="font-size:12px; color:#666;">Контент (текст или YouTube URL)</label>
+    <textarea id="edit-post-body" style="height: 100px;" placeholder="Текст поста..."></textarea>
+    <label style="font-size:12px; color:#666;">Категория</label>
+    <select id="edit-post-category">
+      <option value="Programming">Programming</option>
+      <option value="Gadgets">Gadgets</option>
+      <option value="Design">Design</option>
+      <option value="Other">Other</option>
+    </select>
+    <div class="modal-actions">
+      <button onclick="savePostEdit()" id="btn-save-post" style="flex:2; padding:12px; border:none; border-radius:10px; background:var(--primary); color:white; cursor:pointer; font-weight:bold;">Сохранить</button>
+      <button onclick="closeEditModal()" style="flex:1; padding:12px; border:none; border-radius:10px; background:#eee; cursor:pointer;">Отмена</button>
     </div>
   </div>
 </div>
@@ -145,6 +149,13 @@
   let cropper;
   let croppedBlob;
 
+  function getYouTubeID(url) {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  }
+
   function init() {
     if (!currentUser) { window.location.href = '/login.html'; return; }
     renderData();
@@ -153,151 +164,141 @@
 
   function renderData() {
     const avatarCircle = document.getElementById('avatar-circle');
-    avatarCircle.innerHTML = currentUser.avatarUrl
-            ? `<img src="${currentUser.avatarUrl}">`
-            : currentUser.username[0].toUpperCase();
-
+    avatarCircle.innerHTML = currentUser.avatarUrl ? `<img src="${currentUser.avatarUrl}">` : currentUser.username[0].toUpperCase();
     document.getElementById('display-name').innerText = currentUser.username;
     document.getElementById('display-email').innerText = currentUser.email;
-
     document.querySelectorAll('input[name="profile-interest"]').forEach(cb => {
       cb.checked = currentUser.interests?.includes(cb.value);
     });
   }
 
-  // --- ОБНОВЛЕННАЯ ЛОГИКА ВКЛАДОК ---
   function switchTab(tab) {
-    document.getElementById('tab-posts').classList.toggle('active', tab === 'posts');
-    document.getElementById('tab-liked').classList.toggle('active', tab === 'liked'); // Новое
-    document.getElementById('tab-interests').classList.toggle('active', tab === 'interests');
-
-    document.getElementById('content-posts').classList.toggle('hidden', tab !== 'posts');
-    document.getElementById('content-liked').classList.toggle('hidden', tab !== 'liked'); // Новое
-    document.getElementById('content-interests').classList.toggle('hidden', tab !== 'interests');
-
+    ['posts', 'liked', 'interests'].forEach(t => {
+      document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+      document.getElementById(`content-${t}`).classList.toggle('hidden', t !== tab);
+    });
     if(tab === 'posts') loadMyPosts();
-    if(tab === 'liked') loadLikedPosts(); // Новое
+    if(tab === 'liked') loadLikedPosts();
   }
 
   async function loadMyPosts() {
     const list = document.getElementById('my-posts-list');
     const countSpan = document.getElementById('post-count');
-    list.innerHTML = "<div style='grid-column: 1/-1; text-align:center;'>Загрузка...</div>";
-
     try {
-      const userId = currentUser.id || currentUser._id;
-      const res = await fetch(`/api/content/user/${userId}`);
+      const res = await fetch(`/api/content/user/${currentUser.id || currentUser._id}`);
       const posts = await res.json();
-
       countSpan.innerText = posts.length > 0 ? `(${posts.length})` : '';
+      list.innerHTML = posts.length ? posts.map(post => {
+        const ytId = getYouTubeID(post.body);
+        const ytPreview = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null;
 
-      if (posts.length === 0) {
-        list.innerHTML = "<p style='color:#999; grid-column: 1/-1; text-align:center; padding: 40px;'>У вас пока нет публикаций.</p>";
-        return;
-      }
-
-      list.innerHTML = posts.map(post => `
+        return `
         <div class="post-item" id="post-${post._id}">
           <div class="post-preview">
             ${post.mediaUrl
-              ? (post.type === 'video' ? `<video src="${post.mediaUrl}"></video>` : `<img src="${post.mediaUrl}">`)
-              : `<div style="padding:20px; color:#fff; font-size:12px; text-align:center; height:100%; display:flex; align-items:center;">${post.title}</div>`
-      }
+                ? (post.type === 'video' ? `<video src="${post.mediaUrl}"></video>` : `<img src="${post.mediaUrl}">`)
+                : (ytPreview ? `<img src="${ytPreview}" alt="YouTube">` : `<div style="padding:20px; color:#fff; font-size:12px; text-align:center; height:100%; display:flex; align-items:center;">${post.title}</div>`)
+        }
           </div>
           <div class="post-content">
             <div class="post-title">${post.title}</div>
-            <div class="post-stats">
-              <span>❤️ ${post.likes || 0}</span>
-              <span>💬 ${post.stats?.commentsCount || 0}</span>
-            </div>
+            <div class="post-stats"><span>❤️ ${post.likes || 0}</span> <span>💬 ${post.stats?.commentsCount || 0}</span></div>
             <div class="post-actions">
-              <button class="btn-action btn-edit-post" onclick="editPost('${post._id}')">⚙️</button>
+              <button class="btn-action btn-edit-post" onclick="openEditModal('${post._id}')">⚙️</button>
               <button class="btn-action btn-delete" onclick="deletePost('${post._id}')">🗑️</button>
             </div>
           </div>
         </div>
-      `).join('');
-    } catch (e) { list.innerHTML = "Ошибка связи с сервером"; }
+      `;}).join('') : "<p style='grid-column:1/-1; text-align:center; color:#999;'>Пусто</p>";
+    } catch (e) { list.innerHTML = "Ошибка загрузки"; }
   }
 
-  // --- НОВАЯ ФУНКЦИЯ ЗАГРУЗКИ ПОНРАВИВШИХСЯ ПОСТОВ ---
   async function loadLikedPosts() {
     const list = document.getElementById('liked-posts-list');
-    list.innerHTML = "<div style='grid-column: 1/-1; text-align:center;'>Загрузка...</div>";
-
     try {
-      const userId = currentUser.id || currentUser._id;
-      const res = await fetch(`/api/content/liked/${userId}`);
+      const res = await fetch(`/api/content/liked/${currentUser.id || currentUser._id}`);
       const posts = await res.json();
+      list.innerHTML = posts.length ? posts.map(post => {
+        const ytId = getYouTubeID(post.body);
+        const ytPreview = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null;
 
-      if (posts.length === 0) {
-        list.innerHTML = "<p style='color:#999; grid-column: 1/-1; text-align:center; padding: 40px;'>Вы еще не ставили лайков.</p>";
-        return;
-      }
-
-      list.innerHTML = posts.map(post => `
+        return `
         <div class="post-item">
           <div class="post-preview">
-            ${post.mediaUrl
-              ? (post.type === 'video' ? `<video src="${post.mediaUrl}"></video>` : `<img src="${post.mediaUrl}">`)
-              : `<div style="padding:20px; color:#fff; font-size:12px; text-align:center; height:100%; display:flex; align-items:center;">${post.title}</div>`
-      }
+            ${post.mediaUrl ? (post.type === 'video' ? `<video src="${post.mediaUrl}"></video>` : `<img src="${post.mediaUrl}">`) : (ytPreview ? `<img src="${ytPreview}" alt="YouTube">` : `<div style="padding:20px; color:#fff; font-size:12px;">${post.title}</div>`)}
           </div>
           <div class="post-content">
             <div class="post-title">${post.title}</div>
-            <div class="post-stats">
-              <span style="color:var(--red)">❤️ ${post.likes || 0}</span>
-              <span>👤 ${post.authorId?.username || 'Автор'}</span>
-            </div>
+            <div class="post-stats"><span style="color:var(--red)">❤️ ${post.likes || 0}</span> <span>👤 ${post.authorId?.username || 'Автор'}</span></div>
           </div>
         </div>
-      `).join('');
-    } catch (e) { list.innerHTML = "Ошибка загрузки"; }
+      `;}).join('') : "<p style='grid-column:1/-1; text-align:center; color:#999;'>Нет лайков</p>";
+    } catch (e) { list.innerHTML = "Ошибка"; }
+  }
+
+  async function openEditModal(postId) {
+    const res = await fetch(`/api/content/single/${postId}`);
+    const post = await res.json();
+    document.getElementById('edit-post-id').value = post._id;
+    document.getElementById('edit-post-title').value = post.title;
+    document.getElementById('edit-post-preview').value = post.preview || '';
+    document.getElementById('edit-post-body').value = post.body || '';
+    document.getElementById('edit-post-category').value = post.category || 'Other';
+    document.getElementById('edit-post-modal').style.display = 'flex';
+  }
+
+  function closeEditModal() { document.getElementById('edit-post-modal').style.display = 'none'; }
+
+  async function savePostEdit() {
+    const id = document.getElementById('edit-post-id').value;
+    const btn = document.getElementById('btn-save-post');
+    const data = {
+      title: document.getElementById('edit-post-title').value,
+      preview: document.getElementById('edit-post-preview').value,
+      body: document.getElementById('edit-post-body').value,
+      category: document.getElementById('edit-post-category').value
+    };
+    btn.innerText = "Сохранение...";
+    btn.disabled = true;
+    const res = await fetch(`/api/content/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if(res.ok) {
+      closeEditModal();
+      await loadMyPosts();
+    }
+    btn.innerText = "Сохранить";
+    btn.disabled = false;
   }
 
   async function updateInterests() {
     const btn = document.getElementById('interest-save-btn');
     const selected = Array.from(document.querySelectorAll('input[name="profile-interest"]:checked')).map(cb => cb.value);
-    const userId = currentUser.id || currentUser._id;
-
     btn.innerText = "Сохранение...";
-    btn.disabled = true;
-
-    try {
-      const res = await fetch('/api/users/update', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, interests: selected })
-      });
-
-      if(res.ok) {
-        const data = await res.json();
-        const updatedUser = { ...data.user, id: userId };
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        currentUser = updatedUser;
-        alert("Интересы обновлены!");
-      }
-    } catch (e) { alert("Ошибка сохранения"); }
-    finally { btn.innerText = "Обновить интересы"; btn.disabled = false; }
+    const res = await fetch('/api/users/update', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: currentUser.id || currentUser._id, interests: selected })
+    });
+    if(res.ok) {
+      const data = await res.json();
+      localStorage.setItem('user', JSON.stringify({...data.user, id: currentUser.id || currentUser._id}));
+      alert("Интересы обновлены!");
+    }
+    btn.innerText = "Обновить интересы";
   }
 
   async function deletePost(postId) {
-    if(!confirm("Вы уверены?")) return;
-    try {
-      const res = await fetch(`/api/content/${postId}`, { method: 'DELETE' });
-      if(res.ok) {
-        document.getElementById(`post-${postId}`).style.opacity = '0';
-        setTimeout(() => loadMyPosts(), 300);
-      }
-    } catch (e) { alert("Ошибка удаления"); }
+    if(!confirm("Удалить?")) return;
+    const res = await fetch(`/api/content/${postId}`, { method: 'DELETE' });
+    if(res.ok) loadMyPosts();
   }
-
-  function editPost(id) { alert("В разработке 🛠️"); }
 
   function toggleMode() {
     document.getElementById('view-mode').classList.toggle('hidden');
     document.getElementById('edit-mode').classList.toggle('hidden');
-    if (cropper) cropper.destroy();
   }
 
   function initCropper(event) {
@@ -317,31 +318,22 @@
   function applyCrop() {
     cropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob(blob => {
       croppedBlob = blob;
-      alert("Фото обрезано!");
+      alert("Готово!");
       document.getElementById('cropper-container').classList.add('hidden');
     }, 'image/jpeg');
   }
 
   async function saveAvatarOnly() {
-    if(!croppedBlob) { alert("Обрежьте фото"); return; }
-    const userId = currentUser.id || currentUser._id;
-    const btn = document.getElementById('save-avatar-btn');
-    btn.innerText = "Загрузка...";
-
+    if(!croppedBlob) return alert("Обрежьте фото");
     const fd = new FormData();
     fd.append('avatar', croppedBlob);
-    fd.append('userId', userId);
-
-    try {
-      const res = await fetch('/api/users/upload-avatar', { method: 'POST', body: fd });
-      if(res.ok) {
-        const data = await res.json();
-        const updatedUser = { ...currentUser, avatarUrl: data.user.avatarUrl };
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        alert("Фото обновлено!");
-        location.reload();
-      }
-    } catch (e) { alert("Ошибка"); btn.innerText = "Сохранить"; }
+    fd.append('userId', currentUser.id || currentUser._id);
+    const res = await fetch('/api/users/upload-avatar', { method: 'POST', body: fd });
+    if(res.ok) {
+      const data = await res.json();
+      localStorage.setItem('user', JSON.stringify({...currentUser, avatarUrl: data.user.avatarUrl}));
+      location.reload();
+    }
   }
 
   init();
