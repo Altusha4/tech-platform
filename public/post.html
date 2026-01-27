@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Просмотр публикации</title>
+  <style>
+    :root { --primary: #0071e3; --bg: #f5f5f7; }
+    body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; }
+    .post-container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+    .full-media { width: 100%; border-radius: 15px; margin-bottom: 25px; }
+    .full-media video, .full-media img, .full-media iframe { width: 100%; border-radius: 15px; display: block; }
+    .post-body { line-height: 1.6; font-size: 18px; color: #333; }
+    .back-link { display: inline-block; margin-bottom: 20px; text-decoration: none; color: var(--primary); font-weight: 500; }
+    .meta-info { color: #888; margin-bottom: 10px; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<div class="post-container">
+  <a href="/" class="back-link">← Назад в ленту</a>
+
+  <div id="post-view">
+    <p>Загрузка контента...</p>
+  </div>
+
+  <div id="comments-section" style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
+    <h3>Комментарии</h3>
+    <div id="comments-list"></div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const postId = urlParams.get('id');
+
+  async function loadFullPost() {
+    if (!postId) return window.location.href = '/';
+
+    try {
+      const res = await fetch(`/api/content/single/${postId}`);
+      const post = await res.json();
+
+      // Логика YouTube (как в ленте)
+      const getYT = (url) => {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
+      };
+      const ytUrl = getYT(post.body);
+
+      document.getElementById('post-view').innerHTML = `
+                <div class="meta-info">${post.category} • ${new Date(post.createdAt).toLocaleDateString()}</div>
+                <h1>${post.title}</h1>
+
+                <div class="full-media">
+                    ${post.mediaUrl
+              ? (post.type === 'video' ? `<video src="${post.mediaUrl}" controls></video>` : `<img src="${post.mediaUrl}">`)
+              : (ytUrl ? `<iframe height="450" src="${ytUrl}" frameborder="0" allowfullscreen></iframe>` : '')
+      }
+                </div>
+
+                <div class="post-body">
+                    ${post.body && !ytUrl ? post.body : (post.preview || 'Нет дополнительного текста')}
+                </div>
+
+                <div style="margin-top: 20px;">
+                    ${(post.tags || []).map(t => `<span style="color:var(--primary); margin-right:10px;">#${t}</span>`).join('')}
+                </div>
+            `;
+    } catch (e) {
+      document.getElementById('post-view').innerHTML = "Ошибка загрузки поста.";
+    }
+  }
+
+  loadFullPost();
+</script>
+</body>
+</html>

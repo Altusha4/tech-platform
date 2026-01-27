@@ -49,7 +49,7 @@
         .type-tag { font-size: 11px; font-weight: bold; text-transform: uppercase; color: var(--primary); }
 
         /* Универсальный контейнер для медиа (видео/фото) */
-        .media-container { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 15px; background: #000; aspect-ratio: 16/9; }
+        .media-container { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 15px; background: #000; aspect-ratio: 16/9; cursor: pointer; }
         .media-container iframe, .media-container video, .media-container img {
             width: 100%; height: 100%; border: none; object-fit: cover;
         }
@@ -118,11 +118,12 @@
 <script>
     let currentCategory = 'All';
 
-    function getYouTubeEmbedUrl(url) {
+    // Получаем ID видео из ссылки YouTube
+    function getYouTubeID(url) {
         if (!url) return null;
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
         const match = url.match(regExp);
-        return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
+        return (match && match[2].length === 11) ? match[2] : null;
     }
 
     function renderUserHeader(user) {
@@ -178,13 +179,13 @@
             const isRec = user && item.tags && item.tags.some(tag => user.interests.includes(tag));
             const userHasLiked = user && item.likedBy && item.likedBy.includes(userId);
 
-            const youtubeUrl = getYouTubeEmbedUrl(item.body);
+            const ytId = getYouTubeID(item.body);
             const mediaUrl = item.mediaUrl;
 
             let typeLabel = '📄 Статья';
             if (mediaUrl) {
                 typeLabel = item.type === 'image' ? '🖼️ Фото' : '🎬 Видео';
-            } else if (youtubeUrl) {
+            } else if (ytId) {
                 typeLabel = '🎥 YouTube';
             }
 
@@ -195,20 +196,23 @@
                     <div class="type-tag">${typeLabel}</div>
                     <div class="category-tag">${item.category || 'Other'}</div>
                 </div>
-                <h3 style="margin: 5px 0 10px 0;">${item.title}</h3>
 
-                <div class="card-body-content">
+                <h3 style="margin: 5px 0 10px 0; cursor: pointer;" onclick="window.location.href='/post.html?id=${item._id}'">
+                    ${item.title}
+                </h3>
+
+                <div class="card-body-content" onclick="window.location.href='/post.html?id=${item._id}'">
                     ${mediaUrl
                 ? `<div class="media-container">
                              ${item.type === 'image'
                     ? `<img src="${mediaUrl}">`
-                    : `<video src="${mediaUrl}" controls></video>`}
+                    : `<video src="${mediaUrl}" muted></video>`}
                            </div>`
-                : (youtubeUrl
+                : (ytId
                     ? `<div class="media-container">
-                                 <iframe src="${youtubeUrl}" allowfullscreen></iframe>
+                                 <img src="https://img.youtube.com/vi/${ytId}/mqdefault.jpg" alt="YouTube Preview">
                                </div>`
-                    : `<p style="color: #666; font-size: 14px; line-height: 1.5; flex-grow: 1;">
+                    : `<p style="color: #666; font-size: 14px; line-height: 1.5; flex-grow: 1; cursor: pointer;">
                                  ${item.preview || (item.body ? item.body.substring(0, 100) + '...' : 'Нет описания')}
                                </p>`)
             }
@@ -243,7 +247,6 @@
         }).join('');
     }
 
-    // --- ФУНКЦИИ ЛАЙКОВ ---
     async function handleLike(contentId) {
         const storedUser = localStorage.getItem('user');
         if (!storedUser) return;
@@ -264,7 +267,6 @@
         }
     }
 
-    // --- ФУНКЦИИ КОММЕНТАРИЕВ ---
     async function toggleComments(postId) {
         const block = document.getElementById(`comments-block-${postId}`);
         const isVisible = block.style.display === 'block';

@@ -31,7 +31,8 @@
     .post-preview { width: 100%; height: 150px; background: #1a1a1a; overflow: hidden; position: relative; }
     .post-preview img, .post-preview video { width: 100%; height: 100%; object-fit: cover; }
     .post-content { padding: 18px; }
-    .post-title { font-size: 15px; font-weight: 600; margin: 0 0 12px 0; height: 42px; overflow: hidden; line-height: 1.4; }
+    .post-title { font-size: 15px; font-weight: 600; margin: 0 0 12px 0; height: 42px; overflow: hidden; line-height: 1.4; cursor: pointer; }
+    .post-title:hover { color: var(--primary); }
 
     .post-stats { display: flex; gap: 12px; font-size: 13px; color: #999; margin-bottom: 15px; }
     .post-actions { display: flex; gap: 10px; }
@@ -149,6 +150,7 @@
   let cropper;
   let croppedBlob;
 
+  // Хелпер для YouTube
   function getYouTubeID(url) {
     if (!url) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -188,20 +190,21 @@
       const res = await fetch(`/api/content/user/${currentUser.id || currentUser._id}`);
       const posts = await res.json();
       countSpan.innerText = posts.length > 0 ? `(${posts.length})` : '';
+
       list.innerHTML = posts.length ? posts.map(post => {
         const ytId = getYouTubeID(post.body);
         const ytPreview = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null;
 
         return `
         <div class="post-item" id="post-${post._id}">
-          <div class="post-preview">
+          <div class="post-preview" onclick="window.location.href='/post.html?id=${post._id}'" style="cursor:pointer;">
             ${post.mediaUrl
                 ? (post.type === 'video' ? `<video src="${post.mediaUrl}"></video>` : `<img src="${post.mediaUrl}">`)
                 : (ytPreview ? `<img src="${ytPreview}" alt="YouTube">` : `<div style="padding:20px; color:#fff; font-size:12px; text-align:center; height:100%; display:flex; align-items:center;">${post.title}</div>`)
         }
           </div>
           <div class="post-content">
-            <div class="post-title">${post.title}</div>
+            <div class="post-title" onclick="window.location.href='/post.html?id=${post._id}'">${post.title}</div>
             <div class="post-stats"><span>❤️ ${post.likes || 0}</span> <span>💬 ${post.stats?.commentsCount || 0}</span></div>
             <div class="post-actions">
               <button class="btn-action btn-edit-post" onclick="openEditModal('${post._id}')">⚙️</button>
@@ -224,11 +227,11 @@
 
         return `
         <div class="post-item">
-          <div class="post-preview">
+          <div class="post-preview" onclick="window.location.href='/post.html?id=${post._id}'" style="cursor:pointer;">
             ${post.mediaUrl ? (post.type === 'video' ? `<video src="${post.mediaUrl}"></video>` : `<img src="${post.mediaUrl}">`) : (ytPreview ? `<img src="${ytPreview}" alt="YouTube">` : `<div style="padding:20px; color:#fff; font-size:12px;">${post.title}</div>`)}
           </div>
           <div class="post-content">
-            <div class="post-title">${post.title}</div>
+            <div class="post-title" onclick="window.location.href='/post.html?id=${post._id}'">${post.title}</div>
             <div class="post-stats"><span style="color:var(--red)">❤️ ${post.likes || 0}</span> <span>👤 ${post.authorId?.username || 'Автор'}</span></div>
           </div>
         </div>
