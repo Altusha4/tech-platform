@@ -2,90 +2,100 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Tech Platform - Feed</title>
+    <title>Tech Platform - Инновационная Лента</title>
     <style>
-        :root { --primary: #0071e3; --bg: #f5f5f7; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; }
+        :root { --primary: #0071e3; --bg: #f5f5f7; --card-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); margin: 0; color: #1d1d1f; }
 
-        .navbar { background: white; padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 1000; }
-        .logo { font-size: 20px; font-weight: bold; color: var(--primary); text-decoration: none; }
+        .navbar { background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); padding: 12px 40px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; }
+        .logo { font-size: 20px; font-weight: 700; color: var(--primary); text-decoration: none; letter-spacing: -0.5px; }
         .user-menu { display: flex; align-items: center; gap: 20px; }
 
-        .container { max-width: 1100px; margin: 40px auto; padding: 0 20px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; }
+        .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
 
-        .category-bar { display: flex; gap: 10px; margin-bottom: 25px; overflow-x: auto; padding-bottom: 10px; }
-        .cat-btn {
-            padding: 8px 20px; border-radius: 20px; border: 1px solid #ddd;
-            background: white; cursor: pointer; font-weight: 500; transition: 0.2s; white-space: nowrap;
+        /* Поиск */
+        .search-container { margin-bottom: 30px; position: relative; }
+        .global-search {
+            width: 100%; padding: 16px 25px; border-radius: 16px; border: 1px solid #d2d2d7;
+            font-size: 16px; outline: none; transition: 0.3s; background: white; box-sizing: border-box;
         }
-        .cat-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .global-search:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(0,113,227,0.1); }
+
+        /* Лейаут: Контент + Сайдбар */
+        .main-layout { display: grid; grid-template-columns: 1fr 300px; gap: 30px; }
+
+        @media (max-width: 900px) {
+            .main-layout { grid-template-columns: 1fr; }
+            .sidebar { display: none; }
+        }
+
+        .category-bar { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
+        .cat-btn {
+            padding: 8px 18px; border-radius: 20px; border: none;
+            background: #e8e8ed; cursor: pointer; font-weight: 500; transition: 0.2s; white-space: nowrap; color: #1d1d1f;
+        }
+        .cat-btn.active { background: var(--primary); color: white; }
 
         .post-stub {
-            background: white; border-radius: 18px; padding: 15px 24px; display: flex;
-            align-items: center; gap: 15px; margin-bottom: 40px; cursor: pointer;
-            border: 1px solid #e1e1e1; transition: background 0.2s;
+            background: white; border-radius: 16px; padding: 16px 20px; display: flex;
+            align-items: center; gap: 12px; margin-bottom: 25px; cursor: pointer;
+            box-shadow: var(--card-shadow); border: 1px solid rgba(0,0,0,0.05);
         }
-        .post-stub:hover { background: #fafafa; }
-        .post-stub-input {
-            background: #f0f2f5; flex-grow: 1; padding: 12px 20px;
-            border-radius: 25px; color: #65676b; font-size: 16px;
-        }
+        .post-stub-input { background: #f5f5f7; flex-grow: 1; padding: 10px 18px; border-radius: 20px; color: #86868b; }
+
+        .grid { display: grid; grid-template-columns: 1fr; gap: 25px; }
 
         .card {
             background: white; border-radius: 18px; padding: 24px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: transform 0.2s;
-            position: relative; border: 2px solid transparent; display: flex; flex-direction: column;
+            box-shadow: var(--card-shadow); transition: 0.3s;
+            position: relative; border: 1px solid rgba(0,0,0,0.05);
         }
-        .card.recommended { border: 2px solid var(--primary); background: #fbfdff; }
-        .rec-badge {
-            position: absolute; top: -10px; right: 20px; background: var(--primary);
-            color: white; font-size: 10px; padding: 4px 10px; border-radius: 10px; font-weight: bold;
+        .card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+        .card.recommended { border-left: 5px solid var(--primary); }
+
+        .type-tag { font-size: 12px; font-weight: 600; color: var(--primary); text-transform: uppercase; margin-bottom: 8px; display: block; }
+
+        /* ИСПРАВЛЕННЫЙ КОНТЕЙНЕР: Ограничиваем высоту изображений */
+        .media-container {
+            width: 100%;
+            max-height: 380px; /* Ограничение высоты */
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 15px 0;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
         }
-
-        .card-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .category-tag { font-size: 10px; background: #eee; padding: 2px 8px; border-radius: 4px; color: #666; text-transform: uppercase; }
-        .type-tag { font-size: 11px; font-weight: bold; text-transform: uppercase; color: var(--primary); }
-
-        .media-container { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 15px; background: #000; aspect-ratio: 16/9; cursor: pointer; }
-        .media-container iframe, .media-container video, .media-container img {
-            width: 100%; height: 100%; border: none; object-fit: cover;
+        .media-container img, .media-container video {
+            width: 100%;
+            height: auto;
+            max-height: 380px;
+            object-fit: contain; /* Картинка не обрезается и вписывается в блок */
         }
 
         .interest-tag {
-            display: inline-flex; background: #e8f2ff; color: var(--primary);
-            padding: 4px 10px; border-radius: 6px; font-size: 12px; margin-right: 8px; margin-top: 10px;
+            display: inline-block; background: #f5f5f7; color: #515154;
+            padding: 5px 12px; border-radius: 8px; font-size: 12px; margin: 8px 6px 0 0;
+            cursor: pointer; transition: 0.2s;
         }
+        .interest-tag:hover { background: var(--primary); color: white; }
 
-        .actions-bar { margin-top: 15px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 15px; }
-
+        .actions-bar { margin-top: 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f5f5f7; padding-top: 15px; }
         .action-btn {
-            background: #fff; border: 1px solid #ddd; color: #555;
-            padding: 6px 12px; border-radius: 20px; cursor: pointer; font-weight: bold; transition: 0.2s;
-            display: flex; align-items: center; gap: 5px;
+            background: #f5f5f7; border: none; color: #1d1d1f;
+            padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 6px; font-size: 13px;
         }
-        .like-btn { border-color: #ff3b30; color: #ff3b30; }
-        .like-btn.active { background: #ff3b30; color: #fff; }
+        .like-btn.active { background: #ff3b30; color: white; }
 
-        .comments-section {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px dashed #eee;
-            display: none;
-        }
-        .comment-item {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 12px;
-            font-size: 13px;
-            transition: opacity 0.3s;
-        }
-        .comment-avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: #eee; }
-        .comment-bubble { background: #f0f2f5; padding: 8px 12px; border-radius: 12px; flex-grow: 1; position: relative; }
-        .comment-input-area { display: flex; gap: 8px; margin-top: 15px; }
-        .comment-input { flex-grow: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 18px; font-size: 13px; outline: none; }
-        .comment-send-btn { border:none; background:none; cursor:pointer; font-size: 16px; transition: transform 0.2s; }
-        .comment-send-btn:hover { transform: scale(1.2); }
+        .sidebar-box { background: white; padding: 24px; border-radius: 18px; box-shadow: var(--card-shadow); position: sticky; top: 100px; }
+        .sidebar-box h3 { margin-top: 0; font-size: 18px; margin-bottom: 15px; }
+
+        .comments-section { margin-top: 15px; padding-top: 15px; border-top: 1px dashed #eee; display: none; }
+        .comment-item { display: flex; gap: 10px; margin-bottom: 12px; font-size: 13px; }
+        .comment-avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; }
+        .comment-bubble { background: #f5f5f7; padding: 10px; border-radius: 12px; flex-grow: 1; }
     </style>
 </head>
 <body>
@@ -96,25 +106,41 @@
 </nav>
 
 <div class="container">
-    <div class="post-stub" onclick="window.location.href='/create-post.html'">
-        <div id="mini-avatar-placeholder"></div>
-        <div class="post-stub-input">Что у вас нового?</div>
+    <div class="search-container">
+        <input type="text" id="global-search" class="global-search" oninput="handleSearch()" placeholder="🔍 Поиск по названию, автору или тегам...">
     </div>
 
-    <h1 id="page-title">Инновации в IT 🚀</h1>
+    <div class="main-layout">
+        <div class="content-area">
+            <div class="post-stub" onclick="window.location.href='/create-post.html'">
+                <div id="mini-avatar-placeholder"></div>
+                <div class="post-stub-input">Поделитесь инновацией...</div>
+            </div>
 
-    <div class="category-bar">
-        <button class="cat-btn active" onclick="setCategory('All', this)">Все</button>
-        <button class="cat-btn" onclick="setCategory('Programming', this)">Programming</button>
-        <button class="cat-btn" onclick="setCategory('Gadgets', this)">Gadgets</button>
-        <button class="cat-btn" onclick="setCategory('Design', this)">Design</button>
+            <div class="category-bar">
+                <button class="cat-btn active" onclick="setCategory('All', this)">Все</button>
+                <button class="cat-btn" onclick="setCategory('Programming', this)">Programming</button>
+                <button class="cat-btn" onclick="setCategory('Gadgets', this)">Gadgets</button>
+                <button class="cat-btn" onclick="setCategory('Design', this)">Design</button>
+            </div>
+
+            <div id="feed" class="grid"></div>
+        </div>
+
+        <aside class="sidebar">
+            <div class="sidebar-box">
+                <h3>Трендовые теги ✨</h3>
+                <div id="trending-tags">
+                    <p style="color: #86868b; font-size: 13px;">Загрузка тегов...</p>
+                </div>
+            </div>
+        </aside>
     </div>
-
-    <div id="feed" class="grid"></div>
 </div>
 
 <script>
     let currentCategory = 'All';
+    let allPosts = [];
 
     function getYouTubeID(url) {
         if (!url) return null;
@@ -123,38 +149,34 @@
         return (match && match[2].length === 11) ? match[2] : null;
     }
 
-    function renderUserHeader(user) {
-        const authSection = document.getElementById('auth-section');
-        const miniAvatar = document.getElementById('mini-avatar-placeholder');
-        if (miniAvatar) {
-            miniAvatar.innerHTML = user.avatarUrl
-                ? `<img src="${user.avatarUrl}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">`
-                : `<div style="width:40px; height:40px; border-radius:50%; background:#ddd; display:flex; align-items:center; justify-content:center;">👤</div>`;
-        }
-        if (authSection) {
-            authSection.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 20px;">
-                <a href="/notifications.html" style="text-decoration: none; font-size: 20px;">🔔</a>
-                <a href="/profile.html" style="text-decoration: none; color: inherit; font-weight: 500; display: flex; align-items: center; gap: 8px;">
-                    ${user.avatarUrl ? `<img src="${user.avatarUrl}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border: 1px solid #ddd;">` : '👤'}
-                    ${user.username}
-                </a>
-                <button onclick="logout()" style="background: none; border: 1px solid #ff3b30; color: #ff3b30; padding: 5px 10px; border-radius: 5px; cursor: pointer;">Выйти</button>
-            </div>`;
-        }
-    }
-
     async function checkAuth() {
         const userData = localStorage.getItem('user');
         if (!userData) { window.location.href = '/login.html'; return; }
-        let user = JSON.parse(userData);
-        renderUserHeader(user);
+        renderUserHeader(JSON.parse(userData));
     }
 
-    function logout() {
-        localStorage.removeItem('user');
-        window.location.href = '/login.html';
+    function renderUserHeader(user) {
+        const authSection = document.getElementById('auth-section');
+        const miniPlaceholder = document.getElementById('mini-avatar-placeholder');
+
+        const avatarHtml = user.avatarUrl
+            ? `<img src="${user.avatarUrl}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;">`
+            : `👤`;
+
+        if(miniPlaceholder) miniPlaceholder.innerHTML = user.avatarUrl
+            ? `<img src="${user.avatarUrl}" style="width:35px; height:35px; border-radius:50%; object-fit:cover;">`
+            : `👤`;
+
+        authSection.innerHTML = `
+            <a href="/notifications.html" style="text-decoration:none; font-size:18px;">🔔</a>
+            <a href="/profile.html" style="text-decoration:none; color:inherit; font-weight:600; display:flex; align-items:center; gap:8px;">
+                ${avatarHtml} ${user.username}
+            </a>
+            <button onclick="logout()" style="background:none; border:1px solid #d2d2d7; padding:6px 12px; border-radius:8px; cursor:pointer;">Выход</button>
+        `;
     }
+
+    function logout() { localStorage.removeItem('user'); window.location.href = '/login.html'; }
 
     function setCategory(cat, btn) {
         currentCategory = cat;
@@ -163,72 +185,70 @@
         fetchFeed();
     }
 
+    function handleSearch() {
+        const query = document.getElementById('global-search').value.toLowerCase();
+        const filtered = allPosts.filter(post =>
+            post.title.toLowerCase().includes(query) ||
+            post.authorId?.username.toLowerCase().includes(query) ||
+            post.tags.some(t => t.toLowerCase().includes(query))
+        );
+        renderPosts(filtered);
+    }
+
     async function fetchFeed() {
-        const userData = localStorage.getItem('user');
-        const user = userData ? JSON.parse(userData) : null;
-        const userId = user ? (user.id || user._id) : '';
+        const user = JSON.parse(localStorage.getItem('user'));
+        const userId = user?.id || user?._id;
+        try {
+            const response = await fetch(`/api/content?userId=${userId}&category=${currentCategory}`);
+            allPosts = await response.json();
+            renderPosts(allPosts);
+            updateTrendingTags(allPosts);
+        } catch (e) { console.error(e); }
+    }
 
-        const response = await fetch(`/api/content?userId=${userId}&category=${currentCategory}`);
-        const data = await response.json();
-        const feedElement = document.getElementById('feed');
+    function renderPosts(data) {
+        const feed = document.getElementById('feed');
+        const user = JSON.parse(localStorage.getItem('user'));
+        const userId = user?.id || user?._id;
 
-        feedElement.innerHTML = data.map(item => {
-            const isRec = user && item.tags && item.tags.some(tag => user.interests.includes(tag));
-            const userHasLiked = user && item.likedBy && item.likedBy.includes(userId);
+        if (data.length === 0) {
+            feed.innerHTML = `<p style="text-align:center; padding:40px; color:#86868b;">Ничего не найдено...</p>`;
+            return;
+        }
 
+        feed.innerHTML = data.map(item => {
+            const isRec = user && item.tags?.some(tag => user.interests?.includes(tag));
+            const userHasLiked = item.likedBy?.includes(userId);
             const ytId = getYouTubeID(item.body);
-            const mediaUrl = item.mediaUrl;
-
-            let typeLabel = '📄 Статья';
-            if (mediaUrl) {
-                typeLabel = item.type === 'image' ? '🖼️ Фото' : '🎬 Видео';
-            } else if (ytId) {
-                typeLabel = '🎥 YouTube';
-            }
 
             return `
             <div class="card ${isRec ? 'recommended' : ''}">
-                ${isRec ? '<div class="rec-badge">✨ РЕКОМЕНДУЕМ</div>' : ''}
-                <div class="card-meta">
-                    <div class="type-tag">${typeLabel}</div>
-                    <div class="category-tag">${item.category || 'Other'}</div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="type-tag">${item.mediaUrl ? (item.type === 'video' ? '🎬 Видео' : '🖼️ Фото') : (ytId ? '🎥 YouTube' : '📄 Статья')}</span>
+                    <span style="font-size:11px; color:#86868b;">${item.category}</span>
                 </div>
 
-                <h3 style="margin: 5px 0 10px 0; cursor: pointer;" onclick="window.location.href='/post.html?id=${item._id}'">
-                    ${item.title}
-                </h3>
+                <h3 style="margin:10px 0; cursor:pointer;" onclick="window.location.href='/post.html?id=${item._id}'">${item.title}</h3>
 
-                <div class="card-body-content" onclick="window.location.href='/post.html?id=${item._id}'">
-                    ${mediaUrl
-                ? `<div class="media-container">
-                             ${item.type === 'image'
-                    ? `<img src="${mediaUrl}">`
-                    : `<video src="${mediaUrl}" muted></video>`}
-                           </div>`
-                : (ytId
-                    ? `<div class="media-container">
-                                 <img src="https://img.youtube.com/vi/${ytId}/mqdefault.jpg" alt="YouTube Preview">
-                               </div>`
-                    : `<p style="color: #666; font-size: 14px; line-height: 1.5; flex-grow: 1; cursor: pointer;">
-                                 ${item.preview || (item.body ? item.body.substring(0, 100) + '...' : 'Нет описания')}
-                               </p>`)
+                <div onclick="window.location.href='/post.html?id=${item._id}'">
+                    ${item.mediaUrl
+                ? `<div class="media-container">${item.type === 'image' ? `<img src="${item.mediaUrl}">` : `<video src="${item.mediaUrl}" muted></video>`}</div>`
+                : (ytId ? `<div class="media-container"><img src="https://img.youtube.com/vi/${ytId}/maxresdefault.jpg" onerror="this.src='https://img.youtube.com/vi/${ytId}/mqdefault.jpg'"></div>` : `<p style="color:#3a3a3c; font-size:14px; margin-bottom:15px;">${item.preview || (item.body ? item.body.substring(0,120)+'...' : '')}</p>`)
             }
                 </div>
 
-                <div>
-                    ${(item.tags || []).map(t => `<span class="interest-tag">#${t}</span>`).join('')}
+                <div class="tags-row">
+                    ${(item.tags || []).map(t => `<span class="interest-tag" onclick="event.stopPropagation(); filterByTag('${t}')">#${t}</span>`).join('')}
                 </div>
 
                 <div class="actions-bar">
-                    <div style="font-size: 13px; color: #888;">
-                        👤 <strong>${item.authorId?.username || 'Автор'}</strong>
-                    </div>
-                    <div style="display: flex; gap: 10px;">
+                    <span style="font-size:13px;">👤 <strong>${item.authorId?.username || 'Автор'}</strong></span>
+                    <div style="display:flex; gap:8px;">
                         <button onclick="handleLike('${item._id}')" class="action-btn like-btn ${userHasLiked ? 'active' : ''}">
-                            ❤️ <span id="likes-count-${item._id}">${item.likes || 0}</span>
+                            ❤️ <span id="likes-${item._id}">${item.likes}</span>
                         </button>
                         <button onclick="toggleComments('${item._id}')" class="action-btn">
-                            💬 <span id="comm-count-${item._id}">${item.stats?.commentsCount || 0}</span>
+                            💬 <span>${item.stats?.commentsCount || 0}</span>
                         </button>
                     </div>
                 </div>
@@ -236,7 +256,7 @@
                 <div id="comments-block-${item._id}" class="comments-section">
                     <div id="comments-list-${item._id}"></div>
                     <div class="comment-input-area">
-                        <input type="text" id="input-${item._id}" class="comment-input" placeholder="Написать комментарий...">
+                        <input type="text" id="input-${item._id}" class="comment-input" placeholder="Ваше мнение...">
                         <button onclick="addComment('${item._id}')" class="comment-send-btn">🚀</button>
                     </div>
                 </div>
@@ -244,115 +264,67 @@
         }).join('');
     }
 
-    async function handleLike(contentId) {
-        const storedUser = localStorage.getItem('user');
-        if (!storedUser) return;
-        const user = JSON.parse(storedUser);
-        const userId = user.id || user._id;
+    function updateTrendingTags(posts) {
+        const tagsMap = {};
+        posts.forEach(p => p.tags.forEach(t => tagsMap[t] = (tagsMap[t] || 0) + 1));
+        const sorted = Object.keys(tagsMap).sort((a,b) => tagsMap[b] - tagsMap[a]).slice(0, 8);
+        document.getElementById('trending-tags').innerHTML = sorted.map(t =>
+            `<span class="interest-tag" style="display:block; margin:5px 0; padding:8px;" onclick="filterByTag('${t}')">#${t} (${tagsMap[t]})</span>`
+        ).join('');
+    }
 
-        const res = await fetch(`/api/content/${contentId}/like`, {
+    function filterByTag(tag) {
+        document.getElementById('global-search').value = tag;
+        handleSearch();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function handleLike(id) {
+        const user = JSON.parse(localStorage.getItem('user'));
+        const res = await fetch(`/api/content/${id}/like`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: userId })
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ userId: user.id || user._id })
         });
-
-        if (res.ok) {
+        if(res.ok) {
             const data = await res.json();
-            const countSpan = document.getElementById(`likes-count-${contentId}`);
-            countSpan.innerText = data.likes;
-            countSpan.parentElement.classList.toggle('active', data.isLiked);
+            const btn = document.querySelector(`button[onclick="handleLike('${id}')"]`);
+            btn.classList.toggle('active', data.isLiked);
+            document.getElementById(`likes-${id}`).innerText = data.likes;
         }
     }
 
-    async function toggleComments(postId) {
-        const block = document.getElementById(`comments-block-${postId}`);
-        const isVisible = block.style.display === 'block';
-        block.style.display = isVisible ? 'none' : 'block';
-
-        if (!isVisible) loadComments(postId);
+    async function toggleComments(id) {
+        const block = document.getElementById(`comments-block-${id}`);
+        block.style.display = block.style.display === 'block' ? 'none' : 'block';
+        if(block.style.display === 'block') loadComments(id);
     }
 
     async function loadComments(postId) {
         const list = document.getElementById(`comments-list-${postId}`);
-        const user = JSON.parse(localStorage.getItem('user'));
-        const currentUserId = user ? (user.id || user._id) : null;
-
-        try {
-            const res = await fetch(`/api/comments/${postId}`);
-            const comments = await res.json();
-
-            if (comments.length === 0) {
-                list.innerHTML = "<div style='font-size:12px; color:#888;'>Пока нет комментариев.</div>";
-                return;
-            }
-
-            list.innerHTML = comments.map(c => {
-                const isMyComment = currentUserId && (c.authorId?._id === currentUserId || c.authorId === currentUserId);
-
-                return `
-                <div class="comment-item" id="comment-${c._id}">
-                    <img src="${c.authorId?.avatarUrl || 'https://via.placeholder.com/30'}" class="comment-avatar">
-                    <div class="comment-bubble">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <strong>${c.authorId?.username || 'Пользователь'}</strong>
-                            ${isMyComment ? `<span onclick="deleteComment('${c._id}', '${postId}')" style="cursor:pointer; opacity:0.5; font-size:10px;" title="Удалить">🗑️</span>` : ''}
-                        </div>
-                        <div>${c.text}</div>
-                    </div>
+        const res = await fetch(`/api/comments/${postId}`);
+        const comments = await res.json();
+        list.innerHTML = comments.map(c => `
+            <div class="comment-item">
+                <img src="${c.authorId?.avatarUrl || 'https://via.placeholder.com/30'}" class="comment-avatar">
+                <div class="comment-bubble">
+                    <strong>${c.authorId?.username}</strong>
+                    <div>${c.text}</div>
                 </div>
-            `;
-            }).join('');
-        } catch (e) { console.error(e); }
-    }
-
-    async function deleteComment(commentId, postId) {
-        if (!confirm("Удалить этот комментарий?")) return;
-
-        try {
-            const res = await fetch(`/api/comments/${commentId}`, { method: 'DELETE' });
-            if (res.ok) {
-                const el = document.getElementById(`comment-${commentId}`);
-                if (el) el.style.opacity = '0';
-
-                setTimeout(() => {
-                    loadComments(postId);
-                    const countSpan = document.getElementById(`comm-count-${postId}`);
-                    if (countSpan) {
-                        const newCount = Math.max(0, parseInt(countSpan.innerText) - 1);
-                        countSpan.innerText = newCount;
-                    }
-                }, 300);
-            }
-        } catch (e) {
-            alert("Ошибка при удалении");
-        }
+            </div>
+        `).join('');
     }
 
     async function addComment(postId) {
         const input = document.getElementById(`input-${postId}`);
-        const text = input.value.trim();
-        if (!text) return;
-
-        const storedUser = localStorage.getItem('user');
-        if (!storedUser) return alert("Войдите в систему");
-        const user = JSON.parse(storedUser);
-
-        try {
-            const res = await fetch('/api/comments', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ postId, userId: user.id || user._id, text })
-            });
-
-            if (res.ok) {
-                input.value = '';
-                loadComments(postId);
-                const countSpan = document.getElementById(`comm-count-${postId}`);
-                countSpan.innerText = parseInt(countSpan.innerText) + 1;
-            }
-        } catch (e) {
-            alert("Ошибка отправки");
-        }
+        if(!input.value.trim()) return;
+        const user = JSON.parse(localStorage.getItem('user'));
+        const res = await fetch('/api/comments', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ postId, userId: user.id || user._id, text: input.value })
+        });
+        if(res.ok) { input.value = ''; loadComments(postId); fetchFeed(); }
     }
 
     checkAuth();
