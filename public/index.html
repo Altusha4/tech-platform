@@ -25,13 +25,17 @@
         /* Лейаут */
         .main-layout { display: grid; grid-template-columns: 1fr 300px; gap: 30px; }
 
-        .category-bar { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
-        .category-bar::-webkit-scrollbar { height: 4px; }
+        .category-bar { display: flex; gap: 8px; margin-bottom: 20px; align-items: center; overflow-x: auto; padding-bottom: 8px; }
         .cat-btn {
             padding: 8px 18px; border-radius: 20px; border: none;
             background: #e8e8ed; cursor: pointer; font-weight: 500; transition: 0.2s; white-space: nowrap; color: #1d1d1f;
         }
         .cat-btn.active { background: var(--primary); color: white; }
+
+        /* ПЕРЕКЛЮЧАТЕЛЬ ВИДА */
+        .view-switcher { display: flex; background: #e8e8ed; padding: 4px; border-radius: 12px; gap: 4px; margin-left: auto; }
+        .view-btn { border: none; background: none; padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 16px; transition: 0.2s; display: flex; align-items: center; opacity: 0.6; }
+        .view-btn.active { background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); opacity: 1; }
 
         .post-stub {
             background: white; border-radius: 16px; padding: 16px 20px; display: flex;
@@ -40,13 +44,16 @@
         }
         .post-stub-input { background: #f5f5f7; flex-grow: 1; padding: 10px 18px; border-radius: 20px; color: #86868b; }
 
-        .grid { display: grid; grid-template-columns: 1fr; gap: 25px; }
+        /* СЕТКА ПУБЛИКАЦИЙ */
+        .grid { display: grid; gap: 25px; transition: 0.3s; }
+        .grid.view-list { grid-template-columns: 1fr; }
+        .grid.view-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
 
-        /* СТИЛИ КАРТОЧЕК */
         .card {
             background: white; border-radius: 18px; padding: 24px;
             box-shadow: var(--card-shadow); transition: 0.3s;
             position: relative; border: 1px solid rgba(0,0,0,0.05);
+            display: flex; flex-direction: column;
         }
         .card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
         .card.recommended { border-left: 5px solid var(--primary); }
@@ -59,6 +66,11 @@
         }
         .media-container img, .media-container video { width: 100%; height: auto; max-height: 380px; object-fit: contain; }
 
+        /* Компактный вид для сетки */
+        .view-grid .media-container { max-height: 200px; }
+        .view-grid .card { padding: 16px; }
+        .view-grid h3 { font-size: 16px; height: 40px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
         .interest-tag {
             display: inline-block; background: #f5f5f7; color: #515154;
             padding: 5px 12px; border-radius: 8px; font-size: 12px; margin: 8px 6px 0 0;
@@ -66,7 +78,7 @@
         }
         .interest-tag:hover { background: var(--primary); color: white; }
 
-        .actions-bar { margin-top: 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f5f5f7; padding-top: 15px; }
+        .actions-bar { margin-top: auto; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f5f5f7; padding-top: 15px; }
         .action-btn {
             background: #f5f5f7; border: none; color: #1d1d1f;
             padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 6px; font-size: 13px;
@@ -77,23 +89,22 @@
         .sidebar-box { background: white; padding: 24px; border-radius: 18px; box-shadow: var(--card-shadow); position: sticky; top: 100px; }
         .sidebar-box h3 { margin-top: 0; font-size: 18px; margin-bottom: 15px; }
 
-        /* СКЕЛЕТОНЫ (Загрузка) */
+        /* СКЕЛЕТОНЫ */
         @keyframes skeleton-pulse {
             0% { background-color: #e2e2e7; }
             50% { background-color: #f2f2f7; }
             100% { background-color: #e2e2e7; }
         }
-        .skeleton-card { background: white; border-radius: 18px; padding: 24px; height: 320px; display: flex; flex-direction: column; gap: 15px; border: 1px solid rgba(0,0,0,0.05); }
+        .skeleton-card { background: white; border-radius: 18px; padding: 24px; height: 320px; display: flex; flex-direction: column; gap: 15px; }
         .sk-box { background: #e2e2e7; border-radius: 8px; animation: skeleton-pulse 1.5s infinite ease-in-out; }
 
-        /* ПУСТЫЕ СОСТОЯНИЯ */
         .empty-state { grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: white; border-radius: 18px; border: 2px dashed #d2d2d7; color: #86868b; }
 
-        /* АДАПТИВНОСТЬ */
         @media (max-width: 900px) {
             .main-layout { grid-template-columns: 1fr; }
             .sidebar { display: none; }
             .navbar { padding: 12px 20px; }
+            .view-switcher { display: none; } /* Скрываем переключатель на мобильных */
         }
 
         .comments-section { margin-top: 15px; padding-top: 15px; border-top: 1px dashed #eee; display: none; }
@@ -130,9 +141,14 @@
                 <button class="cat-btn" onclick="setCategory('Programming', this)">Programming</button>
                 <button class="cat-btn" onclick="setCategory('Gadgets', this)">Gadgets</button>
                 <button class="cat-btn" onclick="setCategory('Design', this)">Design</button>
+
+                <div class="view-switcher">
+                    <button class="view-btn" id="btn-view-list" onclick="setView('list')" title="Список">☰</button>
+                    <button class="view-btn" id="btn-view-grid" onclick="setView('grid')" title="Сетка">⊞</button>
+                </div>
             </div>
 
-            <div id="feed" class="grid"></div>
+            <div id="feed" class="grid view-list"></div>
         </div>
 
         <aside class="sidebar">
@@ -149,6 +165,7 @@
 <script>
     let currentCategory = 'All';
     let allPosts = [];
+    let currentView = localStorage.getItem('preferredView') || 'list';
 
     function getYouTubeID(url) {
         if (!url) return null;
@@ -161,6 +178,26 @@
         const userData = localStorage.getItem('user');
         if (!userData) { window.location.href = '/login.html'; return; }
         renderUserHeader(JSON.parse(userData));
+        setView(currentView); // Устанавливаем сохраненный вид
+    }
+
+    function setView(view) {
+        currentView = view;
+        localStorage.setItem('preferredView', view);
+        const feed = document.getElementById('feed');
+
+        const btnList = document.getElementById('btn-view-list');
+        const btnGrid = document.getElementById('btn-view-grid');
+
+        if (view === 'grid') {
+            feed.classList.replace('view-list', 'view-grid');
+            btnGrid.classList.add('active');
+            btnList.classList.remove('active');
+        } else {
+            feed.classList.replace('view-grid', 'view-list');
+            btnList.classList.add('active');
+            btnGrid.classList.remove('active');
+        }
     }
 
     function renderUserHeader(user) {
@@ -217,13 +254,10 @@
     async function fetchFeed() {
         const user = JSON.parse(localStorage.getItem('user'));
         const userId = user?.id || user?._id;
-
         showSkeletons();
-
         try {
             const response = await fetch(`/api/content?userId=${userId}&category=${currentCategory}`);
             allPosts = await response.json();
-            // Небольшая задержка для плавности
             setTimeout(() => {
                 renderPosts(allPosts);
                 updateTrendingTags(allPosts);
