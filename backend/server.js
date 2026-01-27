@@ -17,7 +17,6 @@ const app = express();
 const publicPath = path.join(__dirname, '..', 'public');
 
 // --- НАСТРОЙКА ХРАНИЛИЩА ---
-
 const storageConfigs = {
     avatars: path.join(publicPath, 'uploads', 'avatars'),
     images: path.join(publicPath, 'uploads', 'images'),
@@ -78,7 +77,6 @@ app.post('/api/users/upload-avatar', uploadAvatar.single('avatar'), async (req, 
 });
 
 // --- 2. КОНТЕНТ (CRUD) ---
-
 app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => {
     try {
         const { title, preview, body, category, tags, userId, type } = req.body;
@@ -108,6 +106,7 @@ app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => 
 app.get('/api/content/single/:id', async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ error: "Неверный ID" });
+        // Добавлен populate для отображения автора на странице поста
         const post = await Content.findById(req.params.id).populate('authorId', 'username avatarUrl');
         if (!post) return res.status(404).json({ error: "Пост не найден" });
         res.json(post);
@@ -139,26 +138,22 @@ app.delete('/api/content/:id', async (req, res) => {
 });
 
 // --- 3. ЛЕНТА И ПРОФИЛЬ ---
-
 app.get('/api/content', async (req, res) => {
     try {
         const { userId, category } = req.query;
         let query = {};
         if (category && category !== 'All') query.category = category;
 
-        // 1. Получаем посты
         let posts = await Content.find(query)
             .populate('authorId', 'username avatarUrl')
             .sort({ createdAt: -1 })
             .lean();
 
-        // 2. ДИНАМИЧЕСКИЙ ПОДСЧЕТ КОММЕНТАРИЕВ (Честный счетчик)
         posts = await Promise.all(posts.map(async (post) => {
             const realCount = await Comment.countDocuments({ postId: post._id });
             return { ...post, stats: { ...post.stats, commentsCount: realCount } };
         }));
 
-        // 3. Персонализация ленты
         if (userId && userId !== 'undefined' && mongoose.Types.ObjectId.isValid(userId)) {
             const user = await User.findById(userId);
             if (user && user.interests?.length > 0) {
@@ -174,13 +169,10 @@ app.get('/api/content', async (req, res) => {
 app.get('/api/content/user/:userId', async (req, res) => {
     try {
         let posts = await Content.find({ authorId: req.params.userId }).sort({ createdAt: -1 }).lean();
-
-        // Также фиксим счетчик в профиле
         posts = await Promise.all(posts.map(async (post) => {
             const realCount = await Comment.countDocuments({ postId: post._id });
             return { ...post, stats: { ...post.stats, commentsCount: realCount } };
         }));
-
         res.json(posts);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -202,7 +194,6 @@ app.get('/api/content/liked/:userId', async (req, res) => {
 });
 
 // --- 4. ЛАЙКИ И УВЕДОМЛЕНИЯ ---
-
 app.post('/api/content/:id/like', async (req, res) => {
     try {
         const { userId } = req.body;
@@ -229,10 +220,15 @@ app.post('/api/content/:id/like', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ИСПРАВЛЕНО: Теперь возвращает полный объект пользователя для сохранения аватара
 app.put('/api/users/update', async (req, res) => {
     try {
         const { userId, interests } = req.body;
-        const updatedUser = await User.findByIdAndUpdate(userId, { interests }, { new: true }).select('-passwordHash');
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { interests },
+            { new: true }
+        ).select('-passwordHash'); // Вернет все поля, включая avatarUrl
         res.json({ message: "Профиль обновлен!", user: updatedUser });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -247,7 +243,6 @@ app.get('/api/notifications/:userId', async (req, res) => {
 });
 
 // --- 5. КОММЕНТАРИИ ---
-
 app.get('/api/comments/:postId', async (req, res) => {
     try {
         const comments = await Comment.find({ postId: req.params.postId })
@@ -267,7 +262,6 @@ app.post('/api/comments', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- УДАЛЕНИЕ КОММЕНТАРИЯ ---
 app.delete('/api/comments/:id', async (req, res) => {
     try {
         const comment = await Comment.findById(req.params.id);
@@ -275,14 +269,10 @@ app.delete('/api/comments/:id', async (req, res) => {
 
         const postId = comment.postId;
         await Comment.findByIdAndDelete(req.params.id);
-
-        // Уменьшаем счетчик в посте (хотя мы считаем динамически, в базе поле тоже стоит обновлять)
         await Content.findByIdAndUpdate(postId, { $inc: { 'stats.commentsCount': -1 } });
 
         res.json({ message: "Комментарий удален" });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // --- ЗАПУСК ---

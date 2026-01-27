@@ -165,11 +165,20 @@
 
   function renderData() {
     const avatarCircle = document.getElementById('avatar-circle');
-    avatarCircle.innerHTML = currentUser.avatarUrl ? `<img src="${currentUser.avatarUrl}">` : currentUser.username[0].toUpperCase();
-    document.getElementById('display-name').innerText = currentUser.username;
-    document.getElementById('display-email').innerText = currentUser.email;
+
+    // Надежное отображение аватара
+    if (currentUser.avatarUrl) {
+      avatarCircle.innerHTML = `<img src="${currentUser.avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+    } else {
+      avatarCircle.innerHTML = currentUser.username ? currentUser.username[0].toUpperCase() : '?';
+    }
+
+    document.getElementById('display-name').innerText = currentUser.username || 'Загрузка...';
+    document.getElementById('display-email').innerText = currentUser.email || '';
+
+    // Синхронизация чекбоксов интересов
     document.querySelectorAll('input[name="profile-interest"]').forEach(cb => {
-      cb.checked = currentUser.interests?.includes(cb.value);
+      cb.checked = currentUser.interests && currentUser.interests.includes(cb.value);
     });
   }
 
@@ -290,8 +299,15 @@
     });
     if(res.ok) {
       const data = await res.json();
-      localStorage.setItem('user', JSON.stringify({...data.user, id: currentUser.id || currentUser._id}));
+      // Обновляем localStorage аккуратно, сохраняя аватар
+      const updatedUser = {
+        ...currentUser,
+        interests: data.user.interests
+      };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      currentUser = updatedUser;
       alert("Интересы обновлены!");
+      renderData();
     }
     btn.innerText = "Обновить интересы";
   }
@@ -324,21 +340,35 @@
   function applyCrop() {
     cropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob(blob => {
       croppedBlob = blob;
-      alert("Готово!");
+      alert("Фото обрезано!");
       document.getElementById('cropper-container').classList.add('hidden');
     }, 'image/jpeg');
   }
 
   async function saveAvatarOnly() {
-    if(!croppedBlob) return alert("Обрежьте фото");
+    if(!croppedBlob) return alert("Сначала выберите и обрежьте фото");
     const fd = new FormData();
     fd.append('avatar', croppedBlob);
     fd.append('userId', currentUser.id || currentUser._id);
-    const res = await fetch('/api/users/upload-avatar', { method: 'POST', body: fd });
-    if(res.ok) {
-      const data = await res.json();
-      localStorage.setItem('user', JSON.stringify({...currentUser, avatarUrl: data.user.avatarUrl}));
-      location.reload();
+
+    const btn = document.getElementById('save-avatar-btn');
+    btn.innerText = "Загрузка...";
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/users/upload-avatar', { method: 'POST', body: fd });
+      if(res.ok) {
+        const data = await res.json();
+        const updatedUser = { ...currentUser, avatarUrl: data.user.avatarUrl };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        currentUser = updatedUser;
+        location.reload();
+      }
+    } catch (e) {
+      alert("Ошибка при загрузке");
+    } finally {
+      btn.innerText = "Сохранить фото";
+      btn.disabled = false;
     }
   }
 
