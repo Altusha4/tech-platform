@@ -59,11 +59,35 @@
             padding: 4px 10px; border-radius: 6px; font-size: 12px; margin-right: 8px; margin-top: 10px;
         }
 
-        .like-btn {
-            background: #fff; border: 1px solid #ff3b30; color: #ff3b30;
+        .actions-bar { margin-top: 15px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 15px; }
+
+        .action-btn {
+            background: #fff; border: 1px solid #ddd; color: #555;
             padding: 6px 12px; border-radius: 20px; cursor: pointer; font-weight: bold; transition: 0.2s;
+            display: flex; align-items: center; gap: 5px;
         }
+        .like-btn { border-color: #ff3b30; color: #ff3b30; }
         .like-btn.active { background: #ff3b30; color: #fff; }
+
+        /* Комментарии */
+        .comments-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed #eee;
+            display: none;
+        }
+        .comment-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            font-size: 13px;
+        }
+        .comment-avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: #eee; }
+        .comment-bubble { background: #f0f2f5; padding: 8px 12px; border-radius: 12px; flex-grow: 1; }
+        .comment-input-area { display: flex; gap: 8px; margin-top: 15px; }
+        .comment-input { flex-grow: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 18px; font-size: 13px; outline: none; }
+        .comment-send-btn { border:none; background:none; cursor:pointer; font-size: 16px; transition: transform 0.2s; }
+        .comment-send-btn:hover { transform: scale(1.2); }
     </style>
 </head>
 <body>
@@ -154,12 +178,9 @@
             const isRec = user && item.tags && item.tags.some(tag => user.interests.includes(tag));
             const userHasLiked = user && item.likedBy && item.likedBy.includes(userId);
 
-            // 1. Проверяем YouTube
             const youtubeUrl = getYouTubeEmbedUrl(item.body);
-            // 2. Проверяем загруженный файл
             const mediaUrl = item.mediaUrl;
 
-            // Определяем иконку типа
             let typeLabel = '📄 Статья';
             if (mediaUrl) {
                 typeLabel = item.type === 'image' ? '🖼️ Фото' : '🎬 Видео';
@@ -197,18 +218,32 @@
                     ${(item.tags || []).map(t => `<span class="interest-tag">#${t}</span>`).join('')}
                 </div>
 
-                <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 15px;">
+                <div class="actions-bar">
                     <div style="font-size: 13px; color: #888;">
                         👤 <strong>${item.authorId?.username || 'Автор'}</strong>
                     </div>
-                    <button onclick="handleLike('${item._id}')" class="like-btn ${userHasLiked ? 'active' : ''}">
-                        ❤️ <span id="likes-count-${item._id}">${item.likes || 0}</span>
-                    </button>
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="handleLike('${item._id}')" class="action-btn like-btn ${userHasLiked ? 'active' : ''}">
+                            ❤️ <span id="likes-count-${item._id}">${item.likes || 0}</span>
+                        </button>
+                        <button onclick="toggleComments('${item._id}')" class="action-btn">
+                            💬 <span id="comm-count-${item._id}">${item.stats?.commentsCount || 0}</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="comments-block-${item._id}" class="comments-section">
+                    <div id="comments-list-${item._id}"></div>
+                    <div class="comment-input-area">
+                        <input type="text" id="input-${item._id}" class="comment-input" placeholder="Написать комментарий...">
+                        <button onclick="addComment('${item._id}')" class="comment-send-btn">🚀</button>
+                    </div>
                 </div>
             </div>`;
         }).join('');
     }
 
+    // --- ФУНКЦИИ ЛАЙКОВ ---
     async function handleLike(contentId) {
         const storedUser = localStorage.getItem('user');
         if (!storedUser) return;
@@ -226,6 +261,69 @@
             const countSpan = document.getElementById(`likes-count-${contentId}`);
             countSpan.innerText = data.likes;
             countSpan.parentElement.classList.toggle('active', data.isLiked);
+        }
+    }
+
+    // --- ФУНКЦИИ КОММЕНТАРИЕВ ---
+    async function toggleComments(postId) {
+        const block = document.getElementById(`comments-block-${postId}`);
+        const isVisible = block.style.display === 'block';
+        block.style.display = isVisible ? 'none' : 'block';
+
+        if (!isVisible) loadComments(postId);
+    }
+
+    async function loadComments(postId) {
+        const list = document.getElementById(`comments-list-${postId}`);
+        list.innerHTML = "<div style='font-size:12px; color:#888;'>Загрузка...</div>";
+
+        try {
+            const res = await fetch(`/api/comments/${postId}`);
+            const comments = await res.json();
+
+            if (comments.length === 0) {
+                list.innerHTML = "<div style='font-size:12px; color:#888;'>Пока нет комментариев. Будьте первым!</div>";
+                return;
+            }
+
+            list.innerHTML = comments.map(c => `
+                <div class="comment-item">
+                    <img src="${c.authorId?.avatarUrl || 'https://via.placeholder.com/30'}" class="comment-avatar">
+                    <div class="comment-bubble">
+                        <strong>${c.authorId?.username || 'Пользователь'}</strong>
+                        <div>${c.text}</div>
+                    </div>
+                </div>
+            `).join('');
+        } catch (e) {
+            list.innerHTML = "Ошибка загрузки";
+        }
+    }
+
+    async function addComment(postId) {
+        const input = document.getElementById(`input-${postId}`);
+        const text = input.value.trim();
+        if (!text) return;
+
+        const storedUser = localStorage.getItem('user');
+        if (!storedUser) return alert("Войдите в систему");
+        const user = JSON.parse(storedUser);
+
+        try {
+            const res = await fetch('/api/comments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ postId, userId: user.id || user._id, text })
+            });
+
+            if (res.ok) {
+                input.value = '';
+                loadComments(postId);
+                const countSpan = document.getElementById(`comm-count-${postId}`);
+                countSpan.innerText = parseInt(countSpan.innerText) + 1;
+            }
+        } catch (e) {
+            alert("Ошибка отправки");
         }
     }
 
