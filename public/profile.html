@@ -20,22 +20,22 @@
     .avatar-container:hover .avatar-edit-overlay { opacity: 1; }
 
     /* Вкладки */
-    .tabs { display: flex; border-bottom: 1px solid #eee; margin-bottom: 30px; gap: 30px; }
-    .tab-btn { padding: 12px 0; border: none; background: none; cursor: pointer; font-size: 16px; color: #888; border-bottom: 3px solid transparent; transition: 0.3s; }
+    .tabs { display: flex; border-bottom: 1px solid #eee; margin-bottom: 30px; gap: 30px; overflow-x: auto; }
+    .tab-btn { padding: 12px 0; border: none; background: none; cursor: pointer; font-size: 16px; color: #888; border-bottom: 3px solid transparent; transition: 0.3s; white-space: nowrap; }
     .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: bold; }
 
     /* Сетка постов */
     .posts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
-    .post-item { background: #fff; border: 1px solid #f0f0f0; border-radius: 18px; overflow: hidden; transition: 0.3s; }
+    .post-item { background: #fff; border: 1px solid #f0f0f0; border-radius: 18px; overflow: hidden; transition: 0.3s; display: flex; flex-direction: column; }
     .post-item:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
-    .post-preview { width: 100%; height: 150px; background: #1a1a1a; overflow: hidden; position: relative; }
+    .post-preview { width: 100%; height: 150px; background: #1a1a1a; overflow: hidden; position: relative; cursor: pointer; }
     .post-preview img, .post-preview video { width: 100%; height: 100%; object-fit: cover; }
-    .post-content { padding: 18px; }
+    .post-content { padding: 18px; flex-grow: 1; display: flex; flex-direction: column; }
     .post-title { font-size: 15px; font-weight: 600; margin: 0 0 12px 0; height: 42px; overflow: hidden; line-height: 1.4; cursor: pointer; }
     .post-title:hover { color: var(--primary); }
 
     .post-stats { display: flex; gap: 12px; font-size: 13px; color: #999; margin-bottom: 15px; }
-    .post-actions { display: flex; gap: 10px; }
+    .post-actions { display: flex; gap: 10px; margin-top: auto; }
     .btn-action { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #eee; cursor: pointer; font-size: 13px; background: #fff; transition: 0.2s; }
     .btn-delete:hover { background: var(--red); color: white; border-color: var(--red); }
     .btn-edit-post:hover { background: var(--primary); color: white; border-color: var(--primary); }
@@ -76,28 +76,32 @@
     </div>
 
     <div class="tabs">
-      <button class="tab-btn active" id="tab-posts" onclick="switchTab('posts')">Мои публикации <span id="post-count"></span></button>
+      <button class="tab-btn active" id="tab-posts" onclick="switchTab('posts')">Мои посты <span id="post-count"></span></button>
+      <button class="tab-btn" id="tab-bookmarks" onclick="switchTab('bookmarks')">Закладки 🔖</button>
       <button class="tab-btn" id="tab-liked" onclick="switchTab('liked')">Понравилось</button>
-      <button class="tab-btn" id="tab-interests" onclick="switchTab('interests')">Интересы</button>
+      <button class="tab-btn" id="tab-interests" onclick="switchTab('interests')">Настройки</button>
     </div>
 
     <div id="content-posts">
       <div id="my-posts-list" class="posts-grid"></div>
     </div>
+
+    <div id="content-bookmarks" class="hidden">
+      <div id="bookmarks-list" class="posts-grid"></div>
+    </div>
+
     <div id="content-liked" class="hidden">
       <div id="liked-posts-list" class="posts-grid"></div>
     </div>
+
     <div id="content-interests" class="hidden">
       <div class="interests-container">
         <h3 style="margin-top:0">Настройка ленты 🎯</h3>
         <div class="interests-grid">
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="ai"><span class="tag-box">#AI</span></label>
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="javascript"><span class="tag-box">#JavaScript</span></label>
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="mongodb"><span class="tag-box">#MongoDB</span></label>
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="node"><span class="tag-box">#Node.js</span></label>
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="apple"><span class="tag-box">#Apple</span></label>
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="design"><span class="tag-box">#Design</span></label>
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="backend"><span class="tag-box">#Backend</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="ai"><span class="tag-box">#ai</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="javascript"><span class="tag-box">#javascript</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="mongodb"><span class="tag-box">#mongodb</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="design"><span class="tag-box">#design</span></label>
         </div>
         <button onclick="updateInterests()" id="interest-save-btn" class="btn-save-interests">Обновить интересы</button>
       </div>
@@ -165,29 +169,25 @@
 
   function renderData() {
     const avatarCircle = document.getElementById('avatar-circle');
-
-    // Надежное отображение аватара
     if (currentUser.avatarUrl) {
       avatarCircle.innerHTML = `<img src="${currentUser.avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
     } else {
       avatarCircle.innerHTML = currentUser.username ? currentUser.username[0].toUpperCase() : '?';
     }
-
     document.getElementById('display-name').innerText = currentUser.username || 'Загрузка...';
     document.getElementById('display-email').innerText = currentUser.email || '';
-
-    // Синхронизация чекбоксов интересов
     document.querySelectorAll('input[name="profile-interest"]').forEach(cb => {
       cb.checked = currentUser.interests && currentUser.interests.includes(cb.value);
     });
   }
 
   function switchTab(tab) {
-    ['posts', 'liked', 'interests'].forEach(t => {
+    ['posts', 'bookmarks', 'liked', 'interests'].forEach(t => {
       document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
       document.getElementById(`content-${t}`).classList.toggle('hidden', t !== tab);
     });
     if(tab === 'posts') loadMyPosts();
+    if(tab === 'bookmarks') loadBookmarks();
     if(tab === 'liked') loadLikedPosts();
   }
 
@@ -198,30 +198,23 @@
       const res = await fetch(`/api/content/user/${currentUser.id || currentUser._id}`);
       const posts = await res.json();
       countSpan.innerText = posts.length > 0 ? `(${posts.length})` : '';
-
-      list.innerHTML = posts.length ? posts.map(post => {
-        const ytId = getYouTubeID(post.body);
-        const ytPreview = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null;
-
-        return `
-        <div class="post-item" id="post-${post._id}">
-          <div class="post-preview" onclick="window.location.href='/post.html?id=${post._id}'" style="cursor:pointer;">
-            ${post.mediaUrl
-                ? (post.type === 'video' ? `<video src="${post.mediaUrl}"></video>` : `<img src="${post.mediaUrl}">`)
-                : (ytPreview ? `<img src="${ytPreview}" alt="YouTube">` : `<div style="padding:20px; color:#fff; font-size:12px; text-align:center; height:100%; display:flex; align-items:center;">${post.title}</div>`)
-        }
-          </div>
-          <div class="post-content">
-            <div class="post-title" onclick="window.location.href='/post.html?id=${post._id}'">${post.title}</div>
-            <div class="post-stats"><span>❤️ ${post.likes || 0}</span> <span>💬 ${post.stats?.commentsCount || 0}</span></div>
-            <div class="post-actions">
-              <button class="btn-action btn-edit-post" onclick="openEditModal('${post._id}')">⚙️</button>
-              <button class="btn-action btn-delete" onclick="deletePost('${post._id}')">🗑️</button>
-            </div>
-          </div>
-        </div>
-      `;}).join('') : "<p style='grid-column:1/-1; text-align:center; color:#999;'>Пусто</p>";
+      list.innerHTML = posts.length ? posts.map(p => renderPostCard(p, true)).join('') : "<p style='grid-column:1/-1; text-align:center; color:#999;'>Пусто</p>";
     } catch (e) { list.innerHTML = "Ошибка загрузки"; }
+  }
+
+  async function loadBookmarks() {
+    const list = document.getElementById('bookmarks-list');
+    const bookmarkIds = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+    if (bookmarkIds.length === 0) {
+      list.innerHTML = "<p style='grid-column:1/-1; text-align:center; color:#999;'>У вас нет сохраненных закладок 📑</p>";
+      return;
+    }
+    list.innerHTML = "<p style='grid-column:1/-1; text-align:center;'>Загрузка...</p>";
+    try {
+      const promises = bookmarkIds.map(id => fetch(`/api/content/single/${id}`).then(r => r.json()));
+      const posts = await Promise.all(promises);
+      list.innerHTML = posts.map(p => renderPostCard(p, false)).join('');
+    } catch (e) { list.innerHTML = "Ошибка загрузки закладок"; }
   }
 
   async function loadLikedPosts() {
@@ -229,26 +222,33 @@
     try {
       const res = await fetch(`/api/content/liked/${currentUser.id || currentUser._id}`);
       const posts = await res.json();
-      list.innerHTML = posts.length ? posts.map(post => {
-        const ytId = getYouTubeID(post.body);
-        const ytPreview = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null;
-
-        return `
-        <div class="post-item">
-          <div class="post-preview" onclick="window.location.href='/post.html?id=${post._id}'" style="cursor:pointer;">
-            ${post.mediaUrl ? (post.type === 'video' ? `<video src="${post.mediaUrl}"></video>` : `<img src="${post.mediaUrl}">`) : (ytPreview ? `<img src="${ytPreview}" alt="YouTube">` : `<div style="padding:20px; color:#fff; font-size:12px;">${post.title}</div>`)}
-          </div>
-          <div class="post-content">
-            <div class="post-title" onclick="window.location.href='/post.html?id=${post._id}'">${post.title}</div>
-            <div class="post-stats">
-                <span style="color:var(--red)">❤️ ${post.likes || 0}</span>
-                <span>💬 ${post.stats?.commentsCount || 0}</span>
-                <span>👤 ${post.authorId?.username || 'Автор'}</span>
-            </div>
-          </div>
-        </div>
-      `;}).join('') : "<p style='grid-column:1/-1; text-align:center; color:#999;'>Нет лайков</p>";
+      list.innerHTML = posts.length ? posts.map(p => renderPostCard(p, false)).join('') : "<p style='grid-column:1/-1; text-align:center; color:#999;'>Нет лайков</p>";
     } catch (e) { list.innerHTML = "Ошибка"; }
+  }
+
+  function renderPostCard(post, isOwner) {
+    const ytId = getYouTubeID(post.body);
+    const ytPreview = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null;
+    return `
+      <div class="post-item" id="post-${post._id}">
+        <div class="post-preview" onclick="window.location.href='/post.html?id=${post._id}'">
+          ${post.mediaUrl
+            ? (post.type === 'video' ? `<video src="${post.mediaUrl}"></video>` : `<img src="${post.mediaUrl}">`)
+            : (ytPreview ? `<img src="${ytPreview}" alt="YouTube">` : `<div style="padding:20px; color:#fff; font-size:12px; text-align:center; height:100%; display:flex; align-items:center;">${post.title}</div>`)
+    }
+        </div>
+        <div class="post-content">
+          <div class="post-title" onclick="window.location.href='/post.html?id=${post._id}'">${post.title}</div>
+          <div class="post-stats"><span>❤️ ${post.likes || 0}</span> <span>💬 ${post.stats?.commentsCount || 0}</span></div>
+          ${isOwner ? `
+            <div class="post-actions">
+              <button class="btn-action btn-edit-post" onclick="openEditModal('${post._id}')">⚙️</button>
+              <button class="btn-action btn-delete" onclick="deletePost('${post._id}')">🗑️</button>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
   }
 
   async function openEditModal(postId) {
@@ -299,11 +299,7 @@
     });
     if(res.ok) {
       const data = await res.json();
-      // Обновляем localStorage аккуратно, сохраняя аватар
-      const updatedUser = {
-        ...currentUser,
-        interests: data.user.interests
-      };
+      const updatedUser = { ...currentUser, interests: data.user.interests };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       currentUser = updatedUser;
       alert("Интересы обновлены!");
@@ -350,11 +346,9 @@
     const fd = new FormData();
     fd.append('avatar', croppedBlob);
     fd.append('userId', currentUser.id || currentUser._id);
-
     const btn = document.getElementById('save-avatar-btn');
     btn.innerText = "Загрузка...";
     btn.disabled = true;
-
     try {
       const res = await fetch('/api/users/upload-avatar', { method: 'POST', body: fd });
       if(res.ok) {
