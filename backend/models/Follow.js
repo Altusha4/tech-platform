@@ -1,19 +1,12 @@
 const mongoose = require('mongoose');
 
-const followSchema = new mongoose.Schema({
-    followerId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
-    followingId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
+const FollowSchema = new mongoose.Schema({
+    follower: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    following: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     createdAt: { type: Date, default: Date.now }
 });
 
-// Экспортируем модель. Обрати внимание: импорт User внутри схемы
-// через ref: 'User' сработает автоматически, если модель User зарегистрирована.
-module.exports = mongoose.model('Follow', followSchema, 'follows');
+// Уникальный индекс, чтобы нельзя было подписаться дважды
+FollowSchema.index({ follower: 1, following: 1 }, { unique: true });
+
+module.exports = mongoose.model('Follow', FollowSchema);

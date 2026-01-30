@@ -6,6 +6,7 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 
+// Импорт моделей
 const authRoutes = require('./routes/auth');
 const User = require('./models/User');
 const Content = require('./models/Content');
@@ -24,13 +25,14 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// --- НАСТРОЙКА ХРАНИЛИЩА ---
+// --- НАСТРОЙКА ХРАНИЛИЩА (Multer) ---
 const storageConfigs = {
     avatars: path.join(publicPath, 'uploads', 'avatars'),
     images: path.join(publicPath, 'uploads', 'images'),
     videos: path.join(publicPath, 'uploads', 'videos')
 };
 
+// Создаем папки при запуске
 Object.values(storageConfigs).forEach(dir => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
@@ -51,12 +53,14 @@ const contentStorage = multer.diskStorage({
 const uploadAvatar = multer({ storage: avatarStorage });
 const uploadContent = multer({ storage: contentStorage });
 
+// Статические файлы
 app.use(express.static(publicPath));
 app.use('/uploads', express.static(path.join(publicPath, 'uploads')));
 
+// Маршруты аутентификации
 app.use('/api/auth', authRoutes);
 
-// --- ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ УДАЛЕНИЯ ФАЙЛОВ ---
+// Вспомогательная функция для удаления файлов
 const deleteLocalFile = (relativeUrl) => {
     if (!relativeUrl || relativeUrl.startsWith('data:')) return;
     const absolutePath = path.join(publicPath, relativeUrl);
@@ -67,7 +71,8 @@ const deleteLocalFile = (relativeUrl) => {
     }
 };
 
-// --- 1. ПОЛЬЗОВАТЕЛИ (Аватар и Профиль) ---
+// --- 1. ПОЛЬЗОВАТЕЛИ (Аватар, Профиль, Мини-профиль) ---
+
 app.post('/api/users/upload-avatar', uploadAvatar.single('avatar'), async (req, res) => {
     try {
         const userId = req.headers['x-author-id'] || req.body.userId;
@@ -85,22 +90,35 @@ app.post('/api/users/upload-avatar', uploadAvatar.single('avatar'), async (req, 
 app.put('/api/users/update', async (req, res) => {
     try {
         const { userId, interests } = req.body;
-        const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            { interests },
-            { new: true }
-        ).select('-passwordHash');
+        const updatedUser = await User.findByIdAndUpdate(userId, { interests }, { new: true }).select('-passwordHash');
         res.json({ message: "Профиль обновлен!", user: updatedUser });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Роут для Hover Card (Мини-профиль автора)
+app.get('/api/users/mini-profile/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const user = await User.findById(userId).select('username avatarUrl interests');
+        if (!user) return res.status(404).json({ error: "Пользователь не найден" });
+
+        const followersCount = await Follow.countDocuments({ following: userId });
+        const postsCount = await Content.countDocuments({ authorId: userId });
+
+        res.json({
+            ...user._doc,
+            followersCount,
+            postsCount
+        });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // --- 2. КОНТЕНТ (CRUD) ---
+
 app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => {
     try {
         const authorId = req.headers['x-author-id'] || req.body.userId;
-        if (!authorId || authorId === 'undefined') {
-            return res.status(400).json({ error: "authorId обязателен" });
-        }
+        if (!authorId || authorId === 'undefined') return res.status(400).json({ error: "authorId обязателен" });
 
         const { title, preview, body, category, tags, type, imageBase64 } = req.body;
         let mediaUrl = imageBase64 || null;
@@ -118,7 +136,7 @@ app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => 
             preview, body, mediaUrl,
             category: category || 'Other',
             tags: tags ? (Array.isArray(tags) ? tags : JSON.parse(tags)) : [],
-            authorId: authorId,
+            authorId,
             likes: 0, likedBy: [],
             stats: { views: 0, commentsCount: 0 }
         });
@@ -130,7 +148,6 @@ app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => 
 
 app.get('/api/content/single/:id', async (req, res) => {
     try {
-        if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ error: "Неверный ID" });
         const post = await Content.findById(req.params.id).populate('authorId', 'username avatarUrl');
         if (!post) return res.status(404).json({ error: "Пост не найден" });
         res.json(post);
@@ -150,7 +167,8 @@ app.delete('/api/content/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- 3. ЛЕНТА, ФИЛЬТРЫ И ПРОФИЛЬ ---
+// --- 3. ЛЕНТЫ, ФИЛЬТРЫ И ПРОФИЛЬ ---
+
 app.get('/api/content', async (req, res) => {
     try {
         const { userId, category, authorId } = req.query;
@@ -158,16 +176,14 @@ app.get('/api/content', async (req, res) => {
         if (category && category !== 'All') query.category = category;
         if (authorId) query.authorId = authorId;
 
-        let posts = await Content.find(query)
-            .populate('authorId', 'username avatarUrl')
-            .sort({ createdAt: -1 })
-            .lean();
+        let posts = await Content.find(query).populate('authorId', 'username avatarUrl').sort({ createdAt: -1 }).lean();
 
         posts = await Promise.all(posts.map(async (post) => {
             const realCount = await Comment.countDocuments({ postId: post._id });
             return { ...post, stats: { ...post.stats, commentsCount: realCount } };
         }));
 
+        // Сортировка по интересам
         if (userId && userId !== 'undefined' && mongoose.Types.ObjectId.isValid(userId)) {
             const user = await User.findById(userId);
             if (user && user.interests?.length > 0) {
@@ -189,20 +205,57 @@ app.get('/api/content/user/:userId', async (req, res) => {
 
 app.get('/api/content/liked/:userId', async (req, res) => {
     try {
-        const posts = await Content.find({ likedBy: req.params.userId })
-            .populate('authorId', 'username avatarUrl')
-            .sort({ createdAt: -1 });
+        const posts = await Content.find({ likedBy: req.params.userId }).populate('authorId', 'username avatarUrl').sort({ createdAt: -1 });
         res.json(posts);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- 4. ЛАЙКИ И УВЕДОМЛЕНИЯ ---
+// --- 4. ПОДПИСКИ (FOLLOWERS) ---
+
+app.post('/api/follow', async (req, res) => {
+    try {
+        const { followerId, followingId } = req.body;
+        if (followerId === followingId) return res.status(400).json({ error: "Нельзя подписаться на себя" });
+
+        const existingFollow = await Follow.findOne({ follower: followerId, following: followingId });
+
+        if (existingFollow) {
+            await Follow.deleteOne({ _id: existingFollow._id });
+            res.json({ following: false });
+        } else {
+            await Follow.create({ follower: followerId, following: followingId });
+            await Notification.create({
+                userId: followingId, fromUserId: followerId, type: 'follow',
+                message: 'подписался(ась) на ваши обновления 👤'
+            });
+            res.json({ following: true });
+        }
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/follow/status', async (req, res) => {
+    try {
+        const { followerId, followingId } = req.query;
+        const exists = await Follow.findOne({ follower: followerId, following: followingId });
+        res.json({ following: !!exists });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/content/following/:userId', async (req, res) => {
+    try {
+        const follows = await Follow.find({ follower: req.params.userId });
+        const followingIds = follows.map(f => f.following);
+        const posts = await Content.find({ authorId: { $in: followingIds } }).populate('authorId', 'username avatarUrl').sort({ createdAt: -1 });
+        res.json(posts);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- 5. ЛАЙКИ, КОММЕНТАРИИ И УВЕДОМЛЕНИЯ ---
+
 app.post('/api/content/:id/like', async (req, res) => {
     try {
         const { userId } = req.body;
         const post = await Content.findById(req.params.id);
-        if (!post) return res.status(404).json({ error: "Пост не найден" });
-
         const isLiked = post.likedBy.includes(userId);
         if (isLiked) {
             post.likedBy = post.likedBy.filter(id => id.toString() !== userId.toString());
@@ -210,7 +263,7 @@ app.post('/api/content/:id/like', async (req, res) => {
         } else {
             post.likedBy.push(userId);
             post.likes += 1;
-            if (post.authorId.toString() !== userId.toString()) {
+            if (post.authorId.toString() !== userId) {
                 await Notification.create({
                     userId: post.authorId, fromUserId: userId, type: 'like',
                     message: `поставил(а) лайк вашему посту: "${post.title}"`,
@@ -225,19 +278,14 @@ app.post('/api/content/:id/like', async (req, res) => {
 
 app.get('/api/notifications/:userId', async (req, res) => {
     try {
-        const notes = await Notification.find({ userId: req.params.userId })
-            .populate('fromUserId', 'username avatarUrl')
-            .sort({ createdAt: -1 });
+        const notes = await Notification.find({ userId: req.params.userId }).populate('fromUserId', 'username avatarUrl').sort({ createdAt: -1 });
         res.json(notes);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- 5. КОММЕНТАРИИ ---
 app.get('/api/comments/:postId', async (req, res) => {
     try {
-        const comments = await Comment.find({ postId: req.params.postId })
-            .populate('authorId', 'username avatarUrl')
-            .sort({ createdAt: -1 });
+        const comments = await Comment.find({ postId: req.params.postId }).populate('authorId', 'username avatarUrl').sort({ createdAt: -1 });
         res.json(comments);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -248,19 +296,18 @@ app.post('/api/comments', async (req, res) => {
         const newComment = await Comment.create({ postId, authorId: userId, text });
         const post = await Content.findByIdAndUpdate(postId, { $inc: { 'stats.commentsCount': 1 } });
 
-        if (post && post.authorId.toString() !== userId.toString()) {
+        if (post && post.authorId.toString() !== userId) {
             await Notification.create({
                 userId: post.authorId, fromUserId: userId, type: 'comment',
                 message: `прокомментировал(а) ваш пост: "${post.title}"`,
                 contentId: post._id
             });
         }
-        const populatedComment = await newComment.populate('authorId', 'username avatarUrl');
-        res.status(201).json(populatedComment);
+        res.status(201).json(await newComment.populate('authorId', 'username avatarUrl'));
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- ЗАПУСК ---
+// --- ЗАПУСК СЕРВЕРА ---
 mongoose.connect(process.env.MONGO_URI)
     .then(() => {
         console.log("🚀 MongoDB Connected Successfully");

@@ -12,11 +12,17 @@
         .logo { font-size: 20px; font-weight: 700; color: var(--primary); text-decoration: none; letter-spacing: -0.5px; }
         .user-menu { display: flex; align-items: center; gap: 20px; }
 
-        /* Иконка уведомлений */
         .notif-bell { position: relative; text-decoration: none; font-size: 20px; cursor: pointer; transition: 0.2s; }
-        .notif-dot { position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; background: #ff3b30; border-radius: 50%; border: 2px solid #fff; display: none; }
+        .notif-dot { position: absolute; top: -2px; right: -2px; width: 10px; height: 10px; background: #ff3b30; border-radius: 50%; border: 2px solid #fff; display: none; animation: pulse 2s infinite; }
+
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
 
         .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
+
+        /* Вкладки Ленты */
+        .feed-tabs { display: flex; gap: 30px; margin-bottom: 25px; border-bottom: 1px solid #d2d2d7; }
+        .feed-tab { padding: 12px 0; background: none; border: none; font-size: 16px; font-weight: 600; color: #86868b; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.2s; }
+        .feed-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
 
         .search-container { margin-bottom: 30px; position: relative; }
         .global-search {
@@ -76,6 +82,24 @@
             border: 2px solid white; pointer-events: none;
         }
 
+        /* Hover Card Стиль */
+        .author-wrapper { position: relative; display: inline-block; }
+        .hover-card {
+            position: absolute; bottom: 120%; left: 0; width: 260px;
+            background: white; border-radius: 20px; padding: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15); border: 1px solid #f0f0f2;
+            display: none; z-index: 100; animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .author-wrapper:hover .hover-card { display: block; }
+        .hc-header { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+        .hc-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; }
+        .hc-stats { display: flex; justify-content: space-around; border-top: 1px solid #f5f5f7; padding-top: 12px; text-align: center; }
+        .hc-stat-item { font-size: 12px; color: #86868b; }
+        .hc-stat-item b { display: block; color: #1d1d1f; font-size: 14px; }
+        .btn-hc-follow { width: 100%; margin-top: 12px; padding: 10px; border-radius: 12px; border: none; background: var(--primary); color: white; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .btn-hc-follow.active { background: #e8e8ed; color: #1d1d1f; }
+
         .interest-tag {
             display: inline-block; background: #f5f5f7; color: #515154;
             padding: 5px 12px; border-radius: 8px; font-size: 12px; margin: 8px 6px 0 0;
@@ -117,8 +141,13 @@
 </nav>
 
 <div class="container">
+    <div class="feed-tabs">
+        <button class="feed-tab active" id="tab-all" onclick="setFeedType('all')">Для вас</button>
+        <button class="feed-tab" id="tab-following" onclick="setFeedType('following')">Подписки 👥</button>
+    </div>
+
     <div class="search-container">
-        <input type="text" id="global-search" class="global-search" oninput="handleSearch()" placeholder="🔍 Поиск по названию, автору или тегам...">
+        <input type="text" id="global-search" class="global-search" oninput="handleSearch()" placeholder="🔍 Поиск инноваций...">
     </div>
 
     <div class="main-layout">
@@ -154,6 +183,7 @@
 
 <script>
     let currentCategory = 'All';
+    let currentFeedType = 'all';
     let allPosts = [];
     let currentView = localStorage.getItem('preferredView') || 'list';
     const currentUser = JSON.parse(localStorage.getItem('user'));
@@ -169,7 +199,9 @@
         if (!currentUser) { window.location.href = '/login.html'; return; }
         renderUserHeader(currentUser);
         setView(currentView);
+
         checkNewNotifications();
+        setInterval(checkNewNotifications, 30000);
     }
 
     function renderUserHeader(user) {
@@ -198,11 +230,17 @@
             const res = await fetch(`/api/notifications/${userId}`);
             const data = await res.json();
             const hasUnread = data.some(n => !n.read);
-            if (hasUnread) document.getElementById('notif-dot').style.display = 'block';
+            const dot = document.getElementById('notif-dot');
+            if (dot) dot.style.display = hasUnread ? 'block' : 'none';
         } catch (e) {}
     }
 
-    function logout() { localStorage.removeItem('user'); localStorage.removeItem('token'); window.location.href = '/login.html'; }
+    function setFeedType(type) {
+        currentFeedType = type;
+        document.getElementById('tab-all').classList.toggle('active', type === 'all');
+        document.getElementById('tab-following').classList.toggle('active', type === 'following');
+        fetchFeed();
+    }
 
     function setView(view) {
         currentView = view;
@@ -233,37 +271,71 @@
 
     async function fetchFeed() {
         try {
-            const res = await fetch(`/api/content?category=${currentCategory}`);
+            const userId = currentUser.id || currentUser._id;
+            let url = currentFeedType === 'following'
+                ? `/api/content/following/${userId}`
+                : `/api/content?category=${currentCategory}&userId=${userId}`;
+
+            const res = await fetch(url);
             allPosts = await res.json();
             renderPosts(allPosts);
             updateTrendingTags(allPosts);
         } catch (e) { console.error(e); }
     }
 
+    async function showMiniProfile(authorId, postId) {
+        const card = document.getElementById(`hover-card-${postId}`);
+        const me = currentUser.id || currentUser._id;
+        try {
+            const [userRes, followRes] = await Promise.all([
+                fetch(`/api/users/mini-profile/${authorId}`),
+                fetch(`/api/follow/status?followerId=${me}&followingId=${authorId}`)
+            ]);
+            const user = await userRes.json();
+            const follow = await followRes.json();
+
+            card.innerHTML = `
+                <div class="hc-header">
+                    <img src="${user.avatarUrl || 'https://api.dicebear.com/7.x/big-ears/svg?seed='+user.username}" class="hc-avatar">
+                    <div>
+                        <div style="font-weight:700;">${user.username}</div>
+                        <div style="font-size:11px; color:#86868b;">Инноватор</div>
+                    </div>
+                </div>
+                <div class="hc-stats">
+                    <div class="hc-stat-item"><b>${user.postsCount}</b> постов</div>
+                    <div class="hc-stat-item"><b>${user.followersCount}</b> подписчиков</div>
+                </div>
+                ${authorId !== me ? `
+                    <button onclick="handleFollowHC('${authorId}', '${postId}')" class="btn-hc-follow ${follow.following ? 'active' : ''}">
+                        ${follow.following ? 'Отписаться' : 'Подписаться'}
+                    </button>` : ''}
+            `;
+        } catch (e) { card.innerHTML = "Ошибка данных"; }
+    }
+
+    async function handleFollowHC(targetId, postId) {
+        const me = currentUser.id || currentUser._id;
+        const res = await fetch('/api/follow', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ followerId: me, followingId: targetId })
+        });
+        const data = await res.json();
+        showMiniProfile(targetId, postId);
+        if(currentFeedType === 'following') fetchFeed();
+    }
+
     function renderPosts(data) {
         const feed = document.getElementById('feed');
         const userId = currentUser?.id || currentUser?._id;
 
-        if (!data.length) {
-            feed.innerHTML = '<div class="empty-state">Пусто</div>';
+        if (!data || !data.length) {
+            feed.innerHTML = `<div class="empty-state" style="text-align:center; padding:50px; color:#86868b;"><p style="font-size:40px;">🕸️</p><p>Здесь пока пусто.</p></div>`;
             return;
         }
 
-        // --- ЛОГИКА СОРТИРОВКИ ПО ИНТЕРЕСАМ ---
-        const recommended = [];
-        const normal = [];
-
-        data.forEach(item => {
-            const hasMatch = currentUser?.interests?.some(interest =>
-                item.tags.map(t => t.toLowerCase()).includes(interest.toLowerCase())
-            );
-            if (hasMatch) recommended.push(item);
-            else normal.push(item);
-        });
-
-        const sortedData = [...recommended, ...normal];
-
-        feed.innerHTML = sortedData.map(item => {
+        feed.innerHTML = data.map(item => {
             const isRec = currentUser?.interests?.some(interest =>
                 item.tags.map(t => t.toLowerCase()).includes(interest.toLowerCase())
             );
@@ -297,7 +369,10 @@
                 </div>
 
                 <div class="actions-bar">
-                    <span style="font-size:13px; color:#86868b;">👤 <b>${item.authorId?.username || 'User'}</b></span>
+                    <div class="author-wrapper" onmouseenter="showMiniProfile('${item.authorId?._id}', '${item._id}')">
+                        <span style="font-size:13px; color:#86868b; cursor:pointer;">👤 <b>${item.authorId?.username || 'User'}</b></span>
+                        <div id="hover-card-${item._id}" class="hover-card">Загрузка...</div>
+                    </div>
                     <div style="display:flex; gap:8px;">
                         <button onclick="handleLike('${item._id}')" class="action-btn like-btn ${userHasLiked ? 'active' : ''}" id="like-btn-${item._id}">
                             ❤️ <span id="likes-count-${item._id}">${item.likes}</span>
@@ -331,18 +406,8 @@
                 const data = await res.json();
                 const btn = document.getElementById(`like-btn-${id}`);
                 const span = document.getElementById(`likes-count-${id}`);
-
-                // Бесшовное обновление
                 btn.classList.toggle('active', data.isLiked);
                 span.innerText = data.likes;
-
-                // Обновляем в локальном массиве для поиска
-                const post = allPosts.find(p => p._id === id);
-                if(post) {
-                    post.likes = data.likes;
-                    if(data.isLiked) post.likedBy.push(userId);
-                    else post.likedBy = post.likedBy.filter(uid => uid !== userId);
-                }
             }
         } catch (e) { console.error(e); }
     }
@@ -404,6 +469,8 @@
         handleSearch();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+
+    function logout() { localStorage.removeItem('user'); localStorage.removeItem('token'); window.location.href = '/login.html'; }
 
     checkAuth();
     fetchFeed();
