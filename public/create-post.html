@@ -40,13 +40,14 @@
     }
     .publish-btn:hover { background: #0077ed; transform: translateY(-2px); }
     .publish-btn:disabled { background: #d2d2d7; cursor: not-allowed; transform: none; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
 
 <div class="editor-container">
   <a href="/" class="back-link">← На главную</a>
-  <h1>Создать инновацию 🚀</h1>
+  <h1 id="page-title">Создать инновацию 🚀</h1>
 
   <label>Заголовок публикации</label>
   <input type="text" id="post-title" placeholder="Напр: Как Apple Glass изменят мир...">
@@ -65,11 +66,13 @@
   <label>Контент (текст статьи или ссылка на YouTube)</label>
   <textarea id="post-body" placeholder="Текст вашей статьи или ссылка на видео..."></textarea>
 
-  <label>Загрузить изображение или видео</label>
-  <div class="file-input-wrapper" onclick="document.getElementById('media-file').click()">
-    <div id="upload-text">Нажмите, чтобы выбрать медиафайл</div>
-    <input type="file" id="media-file" accept="image/*,video/*" style="display: none;" onchange="previewMedia(event)">
-    <img id="image-preview" alt="Превью">
+  <div id="media-section">
+    <label>Загрузить изображение или видео</label>
+    <div class="file-input-wrapper" onclick="document.getElementById('media-file').click()">
+      <div id="upload-text">Нажмите, чтобы выбрать медиафайл</div>
+      <input type="file" id="media-file" accept="image/*,video/*" style="display: none;" onchange="previewMedia(event)">
+      <img id="image-preview" alt="Превью">
+    </div>
   </div>
 
   <label>Теги интересов 🎯</label>
@@ -86,6 +89,41 @@
 </div>
 
 <script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const editPostId = urlParams.get('edit'); // Проверяем, редактируем ли мы
+
+  // --- 1. ИНИЦИАЛИЗАЦИЯ ПРИ РЕДАКТИРОВАНИИ ---
+  async function checkEditMode() {
+    if (editPostId) {
+      document.getElementById('page-title').innerText = "Изменить инновацию ✍️";
+      document.getElementById('publish-btn').innerText = "Сохранить изменения";
+      // Скрываем загрузку файлов при редактировании (чтобы не усложнять замену медиа)
+      document.getElementById('media-section').classList.add('hidden');
+
+      try {
+        const res = await fetch(`/api/content/single/${editPostId}`);
+        const post = await res.json();
+
+        if (res.ok) {
+          document.getElementById('post-title').value = post.title;
+          document.getElementById('post-preview').value = post.preview || '';
+          document.getElementById('post-category').value = post.category;
+          document.getElementById('post-body').value = post.body;
+
+          // Отмечаем теги
+          if (post.tags) {
+            post.tags.forEach(tag => {
+              const checkbox = document.querySelector(`.tag-checkbox[value="${tag}"]`);
+              if (checkbox) checkbox.checked = true;
+            });
+          }
+        }
+      } catch (e) {
+        alert("Ошибка при загрузке данных поста");
+      }
+    }
+  }
+
   function previewMedia(event) {
     const file = event.target.files[0];
     const preview = document.getElementById('image-preview');
@@ -105,75 +143,81 @@
     }
   }
 
+  // --- 2. ГЛАВНАЯ ФУНКЦИЯ ОТПРАВКИ ---
   async function publish() {
     const title = document.getElementById('post-title').value.trim();
     const preview = document.getElementById('post-preview').value.trim();
     const body = document.getElementById('post-body').value.trim();
     const category = document.getElementById('post-category').value;
     const tags = Array.from(document.querySelectorAll('.tag-checkbox:checked')).map(cb => cb.value);
-    const mediaFile = document.getElementById('media-file').files[0];
 
     const userData = localStorage.getItem('user');
-    if (!userData) {
-      alert("Пожалуйста, войдите в систему");
-      window.location.href = '/login.html';
-      return;
-    }
+    const user = userData ? JSON.parse(userData) : null;
+    const authorId = user?.id || user?._id;
 
-    const user = JSON.parse(userData);
-    const authorId = user.id || user._id;
-
-    if (!authorId) return alert("Ошибка авторизации. Перевойдите.");
+    if (!authorId) return alert("Пожалуйста, войдите в систему");
     if (!title) return alert("Заголовок обязателен!");
 
     const btn = document.getElementById('publish-btn');
     btn.disabled = true;
-    btn.innerText = "Публикуем...";
+    btn.innerText = "Сохранение...";
 
-    // Используем FormData для поддержки Multer на бэкенде
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('preview', preview);
-    formData.append('body', body);
-    formData.append('category', category);
-    formData.append('tags', JSON.stringify(tags));
+    // ОПРЕДЕЛЯЕМ МЕТОД И URL
+    const method = editPostId ? 'PUT' : 'POST';
+    const apiUrl = editPostId ? `/api/content/${editPostId}` : '/api/content';
 
-    // Тип контента для логики бэкенда
-    let type = 'post';
-    if (body.includes('youtube.com') || body.includes('youtu.be')) type = 'video';
-    formData.append('type', type);
+    let requestBody;
+    let headers = { 'x-author-id': authorId };
 
-    if (mediaFile) {
-      formData.append('mediaFile', mediaFile);
+    if (!editPostId) {
+      // Режим создания (FormData для файлов)
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('preview', preview);
+      formData.append('body', body);
+      formData.append('category', category);
+      formData.append('tags', JSON.stringify(tags));
+
+      let type = 'post';
+      if (body.includes('youtube.com') || body.includes('youtu.be')) type = 'video';
+      formData.append('type', type);
+
+      const mediaFile = document.getElementById('media-file').files[0];
+      if (mediaFile) formData.append('mediaFile', mediaFile);
+
+      requestBody = formData;
+      // При FormData браузер сам поставит правильный Content-Type
+    } else {
+      // Режим редактирования (JSON, так как файлы не меняем)
+      headers['Content-Type'] = 'application/json';
+      requestBody = JSON.stringify({ title, preview, body, category, tags });
     }
 
     try {
-      const res = await fetch('/api/content', {
-        method: 'POST',
-        headers: {
-          // ВОТ ОН: Тот самый заголовок, который ждет твой server.js
-          'x-author-id': authorId
-        },
-        // Важно: для FormData заголовки Content-Type ставить НЕЛЬЗЯ!
-        body: formData
+      const res = await fetch(apiUrl, {
+        method: method,
+        headers: headers,
+        body: requestBody
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        alert("Инновация успешно добавлена! 🚀");
-        window.location.href = '/';
+        alert(editPostId ? "Инновация обновлена! ✨" : "Инновация опубликована! 🚀");
+        window.location.href = '/profile.html';
       } else {
-        alert("Ошибка сервера: " + (data.error || "Ошибка валидации"));
+        alert("Ошибка: " + (data.error || "Не удалось сохранить"));
       }
     } catch (e) {
-      console.error(e);
-      alert("Ошибка сети. Проверьте подключение.");
+      alert("Ошибка сети.");
     } finally {
       btn.disabled = false;
-      btn.innerText = "Опубликовать в ленту";
+      btn.innerText = editPostId ? "Сохранить изменения" : "Опубликовать в ленту";
     }
   }
+
+  // Запуск проверки режима при загрузке
+  checkEditMode();
 </script>
 </body>
 </html>

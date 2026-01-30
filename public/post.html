@@ -15,16 +15,13 @@
     .post-container { max-width: 800px; margin: 20px auto; background: white; padding: 40px; border-radius: 28px; box-shadow: var(--card-shadow); opacity: 0; transform: translateY(10px); transition: 0.5s ease; }
     .post-container.loaded { opacity: 1; transform: translateY(0); }
 
-    /* Шапка поста */
     .post-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; }
     .meta-info { color: #86868b; font-size: 14px; margin-bottom: 8px; font-weight: 500; }
 
-    /* Кнопка закладок */
     .bookmark-btn { background: #f5f5f7; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
     .bookmark-btn:hover { background: #e8e8ed; transform: scale(1.1); }
     .bookmark-btn.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3); }
 
-    /* Медиа-контент */
     .full-media { width: 100%; border-radius: 20px; margin-bottom: 30px; background: #000; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
     .full-media video, .full-media img { width: 100%; display: block; max-height: 550px; object-fit: contain; }
     .full-media iframe { width: 100%; aspect-ratio: 16/9; border: none; display: block; }
@@ -37,10 +34,9 @@
     .back-link { display: inline-block; margin-bottom: 25px; text-decoration: none; color: var(--primary); font-weight: 600; font-size: 15px; transition: 0.2s; }
     .back-link:hover { opacity: 0.7; }
 
-    /* Комментарии */
     .comments-section { margin-top: 50px; border-top: 1px solid #f5f5f7; padding-top: 35px; }
-    .comment-item { display: flex; gap: 15px; margin-bottom: 20px; animation: fadeIn 0.4s ease; }
-    .comment-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; }
+    .comment-item { display: flex; gap: 15px; margin-bottom: 20px; animation: fadeIn 0.4s ease; transition: 0.3s; }
+    .comment-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; background: #fff; }
     .comment-bubble { background: #f5f5f7; padding: 15px 20px; border-radius: 20px; flex-grow: 1; position: relative; }
     .comment-bubble strong { display: block; font-size: 14px; margin-bottom: 5px; color: #1d1d1f; }
 
@@ -49,10 +45,9 @@
     .comment-send-btn { background: var(--primary); color: white; border: none; width: 42px; height: 42px; border-radius: 50%; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
     .comment-send-btn:hover { transform: scale(1.1); background: #0077ed; }
 
-    .delete-btn { cursor: pointer; opacity: 0.3; transition: 0.2s; font-size: 14px; }
-    .delete-btn:hover { opacity: 1; color: var(--red); }
+    .delete-btn { cursor: pointer; opacity: 0.5; transition: 0.2s; font-size: 14px; margin-left: 10px; }
+    .delete-btn:hover { opacity: 1; color: var(--red); transform: scale(1.2); }
 
-    /* Скелетоны */
     .skeleton { background: #e2e2e7; animation: pulse 1.5s infinite ease-in-out; border-radius: 8px; }
     @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
@@ -75,7 +70,6 @@
     <div class="skeleton" style="width: 80%; height: 36px; margin-bottom: 30px;"></div>
     <div class="full-media skeleton" style="height: 400px;"></div>
     <div class="skeleton" style="width: 100%; height: 18px; margin-bottom: 10px;"></div>
-    <div class="skeleton" style="width: 100%; height: 18px; margin-bottom: 10px;"></div>
     <div class="skeleton" style="width: 60%; height: 18px;"></div>
   </div>
 
@@ -95,11 +89,11 @@
   const postId = urlParams.get('id');
   const currentUser = JSON.parse(localStorage.getItem('user'));
 
-  // Индикатор чтения
+  // Прогресс чтения
   window.onscroll = () => {
     const winScroll = document.documentElement.scrollTop;
     const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-    const scrolled = (winScroll / height) * 100;
+    const scrolled = height > 0 ? (winScroll / height) * 100 : 0;
     document.getElementById("progress-bar").style.width = scrolled + "%";
   };
 
@@ -115,6 +109,7 @@
 
     try {
       const res = await fetch(`/api/content/single/${postId}`);
+      if (!res.ok) throw new Error("404");
       const post = await res.json();
 
       const ytId = getYouTubeID(post.mediaUrl) || getYouTubeID(post.body);
@@ -134,10 +129,10 @@
                 : `<div class="full-media"><img src="${post.mediaUrl}" alt="Media"></div>`;
       }
 
-      const cleanBody = (ytId && post.body && post.body.includes(ytId)) ? (post.preview || '') : post.body;
-
-      // Эффект появления
-      const container = document.getElementById('main-container');
+      let bodyText = post.body || '';
+      if (ytId) {
+        bodyText = bodyText.replace(/https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/\S+/g, '');
+      }
 
       document.getElementById('post-view').innerHTML = `
         <div class="post-header">
@@ -153,7 +148,7 @@
         ${mediaHtml}
 
         <div class="post-body">
-          ${cleanBody || post.preview || 'Текст публикации в процессе обновления...'}
+          ${bodyText || post.preview || 'Текст отсутствует.'}
         </div>
 
         <div style="margin-bottom: 35px;">
@@ -161,18 +156,18 @@
         </div>
 
         <div style="background: #f5f5f7; padding: 20px; border-radius: 20px; display: flex; align-items: center; gap: 15px; border: 1px solid rgba(0,0,0,0.03);">
-          <img src="${post.authorId?.avatarUrl || 'https://api.dicebear.com/7.x/big-ears/svg?seed=' + post.authorId?.username}" style="width:50px; height:50px; border-radius:50%; background: #fff; border: 1px solid #ddd;">
+          <img src="${post.authorId?.avatarUrl || 'https://api.dicebear.com/7.x/big-ears/svg?seed=' + post.authorId?.username}" style="width:50px; height:50px; border-radius:50%; background: #fff; border: 1px solid #ddd; object-fit: cover;">
           <div>
-            <div style="font-size: 12px; color: #86868b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Автор публикации</div>
+            <div style="font-size: 12px; color: #86868b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Автор</div>
             <strong style="font-size: 17px; color: #1d1d1f;">${post.authorId?.username || 'Tech Expert'}</strong>
           </div>
         </div>
       `;
 
-      container.classList.add('loaded');
+      document.getElementById('main-container').classList.add('loaded');
       loadComments();
     } catch (e) {
-      document.getElementById('post-view').innerHTML = "<h2 style='text-align:center;'>Публикация не найдена 404</h2>";
+      document.getElementById('post-view').innerHTML = "<h2 style='text-align:center;'>Публикация не найдена</h2>";
       document.getElementById('main-container').classList.add('loaded');
     }
   }
@@ -204,34 +199,40 @@
       countSpan.innerText = comments.length;
 
       if (!comments.length) {
-        list.innerHTML = "<p style='color: #888; text-align: center; padding: 20px 0;'>Пока никто не оставил мнение. Будьте первыми!</p>";
+        list.innerHTML = "<p style='color: #888; text-align: center; padding: 20px 0;'>Комментариев пока нет.</p>";
         return;
       }
 
       list.innerHTML = comments.map(c => {
-        const isMyComment = currentUserId && (c.authorId?._id === currentUserId || c.authorId === currentUserId);
+        const author = c.authorId || {};
+        const authorIdStr = author._id || author;
+        const isMyComment = currentUserId && authorIdStr === currentUserId;
+        const avatar = author.avatarUrl || `https://api.dicebear.com/7.x/big-ears/svg?seed=${author.username || 'user'}`;
+
         return `
           <div class="comment-item" id="comment-${c._id}">
-            <img src="${c.authorId?.avatarUrl || 'https://api.dicebear.com/7.x/big-ears/svg?seed=' + c.authorId?.username}" class="comment-avatar">
+            <img src="${avatar}" class="comment-avatar">
             <div class="comment-bubble">
               <div style="display: flex; justify-content: space-between; align-items: center;">
-                <strong>${c.authorId?.username || 'Инноватор'}</strong>
-                ${isMyComment ? `<span class="delete-btn" onclick="deleteComment('${c._id}')">🗑️</span>` : ''}
+                <strong>${author.username || 'Инноватор'}</strong>
+                ${isMyComment ? `<span class="delete-btn" title="Удалить" onclick="deleteComment('${c._id}')">🗑️</span>` : ''}
               </div>
               <div style="margin-top: 6px; color: #3a3a3c;">${c.text}</div>
             </div>
           </div>
         `;
       }).join('');
-    } catch (e) { list.innerHTML = "Ошибка загрузки обсуждения"; }
+    } catch (e) { list.innerHTML = "Ошибка загрузки."; }
   }
 
   async function addComment() {
     const input = document.getElementById('new-comment-text');
-    if (!input.value.trim() || !currentUser) {
-      if(!currentUser) alert("Войдите, чтобы комментировать");
+    const text = input.value.trim();
+    if (!text || !currentUser) {
+      if(!currentUser) alert("Войдите в аккаунт");
       return;
     }
+
     try {
       const res = await fetch('/api/comments', {
         method: 'POST',
@@ -239,22 +240,40 @@
         body: JSON.stringify({
           postId,
           userId: currentUser.id || currentUser._id,
-          text: input.value.trim()
+          text
         })
       });
-      if (res.ok) { input.value = ''; loadComments(); }
+      if (res.ok) {
+        input.value = '';
+        await loadComments();
+      }
     } catch (e) { console.error(e); }
   }
 
   async function deleteComment(commentId) {
-    if (!confirm("Удалить этот комментарий?")) return;
+    if (!confirm("Удалить комментарий?")) return;
+
+    // Скрываем сразу для скорости (Optimistic UI)
+    const el = document.getElementById(`comment-${commentId}`);
+    if (el) el.style.opacity = '0.3';
+
     try {
       const res = await fetch(`/api/comments/${commentId}`, { method: 'DELETE' });
-      if (res.ok) loadComments();
-    } catch (e) { alert("Ошибка при удалении"); }
+      if (res.ok) {
+        await loadComments();
+      } else {
+        if (el) el.style.opacity = '1';
+        alert("Не удалось удалить.");
+      }
+    } catch (e) {
+      if (el) el.style.opacity = '1';
+      alert("Ошибка сети.");
+    }
   }
 
-  document.getElementById('new-comment-text').addEventListener('keypress', (e) => { if (e.key === 'Enter') addComment(); });
+  document.getElementById('new-comment-text').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') addComment();
+  });
 
   loadFullPost();
 </script>
