@@ -16,11 +16,14 @@ const Comment = require('./models/Comment');
 const app = express();
 const publicPath = path.join(__dirname, '..', 'public');
 
-// --- НАСТРОЙКА ЛИМИТОВ И ПАРСЕРОВ ---
-// Увеличиваем лимиты, чтобы принимать Base64 и тяжелые JSON объекты
+// --- НАСТРОЙКА CORS И ПАРСЕРОВ ---
+// Разрешаем x-author-id в заголовках, иначе браузер заблокирует запрос
+app.use(cors({
+    origin: '*',
+    allowedHeaders: ['Content-Type', 'x-author-id']
+}));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
-app.use(cors());
 
 // --- НАСТРОЙКА ХРАНИЛИЩА ---
 const storageConfigs = {
@@ -29,7 +32,6 @@ const storageConfigs = {
     videos: path.join(publicPath, 'uploads', 'videos')
 };
 
-// Создаем папки, если их нет
 Object.values(storageConfigs).forEach(dir => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
@@ -57,7 +59,7 @@ app.use('/api/auth', authRoutes);
 
 // --- ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ УДАЛЕНИЯ ФАЙЛОВ ---
 const deleteLocalFile = (relativeUrl) => {
-    if (!relativeUrl || relativeUrl.startsWith('data:')) return; // Не удаляем Base64
+    if (!relativeUrl || relativeUrl.startsWith('data:')) return;
     const absolutePath = path.join(publicPath, relativeUrl);
     if (fs.existsSync(absolutePath)) {
         fs.unlink(absolutePath, (err) => {
@@ -69,7 +71,6 @@ const deleteLocalFile = (relativeUrl) => {
 // --- 1. ЗАГРУЗКА АВАТАРКИ ---
 app.post('/api/users/upload-avatar', uploadAvatar.single('avatar'), async (req, res) => {
     try {
-        // Берем userId либо из заголовка, либо из тела
         const userId = req.headers['x-author-id'] || req.body.userId;
         if (!req.file) return res.status(400).json({ error: "Файл не загружен" });
 
@@ -83,10 +84,8 @@ app.post('/api/users/upload-avatar', uploadAvatar.single('avatar'), async (req, 
 });
 
 // --- 2. КОНТЕНТ (CRUD) ---
-// ИСПОЛЬЗУЕМ HEADERS ДЛЯ authorId
 app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => {
     try {
-        // ЧИТАЕМ ID АВТОРА ИЗ ЗАГОЛОВКА
         const authorId = req.headers['x-author-id'] || req.body.userId;
 
         if (!authorId || authorId === 'undefined') {
@@ -94,10 +93,9 @@ app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => 
         }
 
         const { title, preview, body, category, tags, type, imageBase64 } = req.body;
-        let mediaUrl = imageBase64 || null; // Поддержка Base64 если пришел
+        let mediaUrl = imageBase64 || null;
         let finalType = type || 'post';
 
-        // Если загружен физический файл через Multer
         if (req.file) {
             const folder = req.file.mimetype.startsWith('image/') ? 'images' : 'videos';
             mediaUrl = `/uploads/${folder}/${req.file.filename}`;
@@ -125,8 +123,6 @@ app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => 
         res.status(500).json({ error: err.message });
     }
 });
-
-//
 
 app.get('/api/content/single/:id', async (req, res) => {
     try {
@@ -161,13 +157,11 @@ app.get('/api/content', async (req, res) => {
             .sort({ createdAt: -1 })
             .lean();
 
-        // Синхронизация реального кол-ва комментов
         posts = await Promise.all(posts.map(async (post) => {
             const realCount = await Comment.countDocuments({ postId: post._id });
             return { ...post, stats: { ...post.stats, commentsCount: realCount } };
         }));
 
-        // Рекомендации по интересам
         if (userId && userId !== 'undefined' && mongoose.Types.ObjectId.isValid(userId)) {
             const user = await User.findById(userId);
             if (user && user.interests?.length > 0) {
@@ -208,14 +202,36 @@ app.post('/api/content/:id/like', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- 4. КОММЕНТАРИИ ---
+// --- 4. УВЕДОМЛЕНИЯ (ДОБАВЛЕННЫЙ РОУТ) ---
+app.get('/api/notifications/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ error: "Некорректный ID пользователя" });
+        }
+        const notes = await Notification.find({ userId: userId })
+            .populate('fromUserId', 'username avatarUrl')
+            .sort({ createdAt: -1 });
+        res.json(notes);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- 5. КОММЕНТАРИИ ---
+app.get('/api/comments/:postId', async (req, res) => {
+    try {
+        const comments = await Comment.find({ postId: req.params.postId })
+            .populate('authorId', 'username avatarUrl')
+            .sort({ createdAt: -1 });
+        res.json(comments);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.post('/api/comments', async (req, res) => {
     try {
         const { postId, userId, text } = req.body;
         const newComment = await Comment.create({ postId, authorId: userId, text });
         const post = await Content.findByIdAndUpdate(postId, { $inc: { 'stats.commentsCount': 1 } });
 
-        // Уведомление о комментарии
         if (post && post.authorId.toString() !== userId.toString()) {
             await Notification.create({
                 userId: post.authorId,

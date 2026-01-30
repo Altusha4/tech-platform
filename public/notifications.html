@@ -6,7 +6,7 @@
   <title>Уведомления | TechPlatform</title>
   <style>
     :root { --primary: #0071e3; --bg: #f5f5f7; }
-    body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #1d1d1f; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #1d1d1f; }
 
     .notif-container { max-width: 600px; margin: 40px auto; background: white; padding: 30px; border-radius: 28px; box-shadow: 0 4px 25px rgba(0,0,0,0.05); }
     h1 { font-size: 28px; letter-spacing: -0.5px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
@@ -18,15 +18,17 @@
       transition: 0.2s; cursor: pointer; text-decoration: none; color: inherit;
     }
     .notif-item:hover { background: #f9f9fb; transform: translateX(5px); }
+    /* Стиль для непрочитанных (можно добавить логику в бэкенд позже) */
     .notif-item.unread { border-left: 4px solid var(--primary); background: #f0f7ff; }
 
-    .notif-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; background: #eee; }
+    .notif-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; background: #eee; border: 1px solid #eee; }
     .notif-content { flex-grow: 1; font-size: 14px; }
     .notif-content b { color: #000; }
     .notif-time { font-size: 11px; color: #86868b; margin-top: 4px; }
 
-    .empty-state { text-align: center; padding: 50px 0; color: #86868b; }
-    .back-link { text-decoration: none; color: var(--primary); font-weight: 600; font-size: 14px; }
+    .empty-state { text-align: center; padding: 50px 0; color: #86868b; font-size: 16px; }
+    .back-link { text-decoration: none; color: var(--primary); font-weight: 600; font-size: 14px; display: inline-block; margin-bottom: 10px; }
+    .error-msg { text-align: center; color: #ff3b30; padding: 20px; }
   </style>
 </head>
 <body>
@@ -36,47 +38,68 @@
   <h1>Уведомления <span id="unread-dot" style="display:none; width:10px; height:10px; background:var(--primary); border-radius:50%;"></span></h1>
 
   <div id="notif-list" class="notif-list">
-    <p style="text-align: center; color: #888;">Загрузка...</p>
+    <p style="text-align: center; color: #888;">Синхронизация с сервером...</p>
   </div>
 </div>
 
 <script>
-  const user = JSON.parse(localStorage.getItem('user'));
+  // Синхронизируем получение ID пользователя
+  const userData = localStorage.getItem('user');
+  const user = userData ? JSON.parse(userData) : null;
   const userId = user?.id || user?._id;
 
   async function loadNotifications() {
-    if (!userId) return;
-    try {
-      const res = await fetch(`/api/notifications/${userId}`);
-      const data = await res.json();
-      const list = document.getElementById('notif-list');
+    const list = document.getElementById('notif-list');
 
-      if (!data.length) {
+    if (!userId) {
+      list.innerHTML = `<div class="empty-state">Войдите в систему, чтобы видеть уведомления 🔐</div>`;
+      return;
+    }
+
+    try {
+      // Запрос к нашему исправленному API в server.js
+      const res = await fetch(`/api/notifications/${userId}`);
+
+      if (!res.ok) throw new Error('Ошибка при получении данных');
+
+      const data = await res.json();
+
+      if (!data || data.length === 0) {
         list.innerHTML = `<div class="empty-state">Пока здесь тишина... 🤫</div>`;
         return;
       }
 
+
+
       list.innerHTML = data.map(n => {
+        // На бэкенде мы используем fromUserId и contentId
+        const sender = n.fromUserId || { username: 'Пользователь', avatarUrl: '' };
         const actionText = n.type === 'like' ? 'поставил(а) ❤️ вашему посту' : 'прокомментировал(а) ваш пост 💬';
+
+        // Ссылка на аватарку (проверяем, есть ли она)
+        const avatar = sender.avatarUrl || `https://api.dicebear.com/7.x/big-ears/svg?seed=${sender.username}`;
+
+        // Ссылка на пост (если есть)
+        const postLink = n.contentId ? `/post.html?id=${n.contentId}` : '#';
+
         return `
-          <a href="/post.html?id=${n.postId?._id}" class="notif-item ${n.read ? '' : 'unread'}">
-            <img src="${n.sender.avatarUrl || 'https://api.dicebear.com/7.x/big-ears/svg?seed='+n.sender.username}" class="notif-avatar">
+          <a href="${postLink}" class="notif-item">
+            <img src="${avatar}" class="notif-avatar" onerror="this.src='https://api.dicebear.com/7.x/big-ears/svg?seed=fallback'">
             <div class="notif-content">
-              <b>${n.sender.username}</b> ${actionText}:
-              <div style="color: #666; margin-top: 3px; font-style: italic;">"${n.postId?.title}"</div>
-              <div class="notif-time">${new Date(n.createdAt).toLocaleString()}</div>
+              <b>${sender.username}</b> ${actionText}
+              <div class="notif-time">${new Date(n.createdAt).toLocaleString('ru-RU')}</div>
             </div>
           </a>
         `;
       }).join('');
 
-      // Помечаем как прочитанные после открытия страницы
-      fetch(`/api/notifications/read-all/${userId}`, { method: 'PUT' });
     } catch (e) {
-      document.getElementById('notif-list').innerHTML = "Ошибка загрузки";
+      console.error(e);
+      list.innerHTML = `<div class="error-msg">⚠️ Ошибка загрузки уведомлений. Проверьте соединение с сервером.</div>`;
     }
   }
 
+  // Запускаем загрузку
   loadNotifications();
 </script>
 </body>
