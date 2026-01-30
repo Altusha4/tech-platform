@@ -7,12 +7,9 @@
   <style>
     :root { --primary: #0071e3; --bg: #f5f5f7; --border: #d2d2d7; }
     body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #1d1d1f; }
-
     .editor-container { max-width: 700px; margin: 40px auto; background: white; padding: 40px; border-radius: 28px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
     .back-link { text-decoration: none; color: var(--primary); font-weight: 600; display: inline-block; margin-bottom: 25px; font-size: 15px; }
-
     h1 { font-size: 32px; letter-spacing: -0.8px; margin-bottom: 30px; }
-
     label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; color: #1d1d1f; }
     input, textarea, select {
       width: 100%; padding: 14px; margin-bottom: 20px;
@@ -21,10 +18,7 @@
       transition: 0.2s; background: #fafafa;
     }
     input:focus, textarea:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 4px rgba(0,113,227,0.1); }
-
     textarea { height: 120px; resize: none; }
-
-    /* Область загрузки файла */
     .file-input-wrapper {
       border: 2px dashed var(--border); padding: 30px; text-align: center;
       border-radius: 16px; margin-bottom: 20px; cursor: pointer; transition: 0.2s;
@@ -32,8 +26,6 @@
     }
     .file-input-wrapper:hover { border-color: var(--primary); background: #fff; }
     #image-preview { width: 100%; max-height: 300px; object-fit: cover; border-radius: 12px; display: none; margin-top: 15px; }
-
-    /* Группа тегов */
     .tag-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px; }
     .tag-checkbox { display: none; }
     .tag-label {
@@ -41,7 +33,6 @@
       cursor: pointer; font-size: 13px; transition: 0.2s; background: #fff; font-weight: 500;
     }
     .tag-checkbox:checked + .tag-label { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 10px rgba(0,113,227,0.2); }
-
     .publish-btn {
       width: 100%; background: var(--primary); color: white; border: none;
       padding: 18px; border-radius: 14px; font-size: 18px; font-weight: 700;
@@ -58,10 +49,10 @@
   <h1>Создать инновацию 🚀</h1>
 
   <label>Заголовок публикации</label>
-  <input type="text" id="post-title" placeholder="Как Apple Glass изменят мир...">
+  <input type="text" id="post-title" placeholder="Напр: Как Apple Glass изменят мир...">
 
   <label>Краткое превью (для ленты)</label>
-  <input type="text" id="post-preview" placeholder="Краткое описание, которое зацепит читателя">
+  <input type="text" id="post-preview" placeholder="Краткое описание для карточки">
 
   <label>Категория</label>
   <select id="post-category">
@@ -72,16 +63,16 @@
   </select>
 
   <label>Контент (текст статьи или ссылка на YouTube)</label>
-  <textarea id="post-body" placeholder="Напишите здесь вашу историю или просто вставьте ссылку на YouTube видео..."></textarea>
+  <textarea id="post-body" placeholder="Текст вашей статьи или ссылка на видео..."></textarea>
 
-  <label>Загрузить изображение или видеофайл</label>
+  <label>Загрузить изображение или видео</label>
   <div class="file-input-wrapper" onclick="document.getElementById('media-file').click()">
-    <div id="upload-text">Нажмите, чтобы выбрать файл (JPG, PNG, MP4)</div>
+    <div id="upload-text">Нажмите, чтобы выбрать медиафайл</div>
     <input type="file" id="media-file" accept="image/*,video/*" style="display: none;" onchange="previewMedia(event)">
     <img id="image-preview" alt="Превью">
   </div>
 
-  <label>Теги интересов (помогут попасть в рекомендации) 🎯</label>
+  <label>Теги интересов 🎯</label>
   <div class="tag-group">
     <input type="checkbox" id="t1" class="tag-checkbox" value="programming"><label for="t1" class="tag-label">💻 programming</label>
     <input type="checkbox" id="t2" class="tag-checkbox" value="design"><label for="t2" class="tag-label">🎨 design</label>
@@ -95,7 +86,6 @@
 </div>
 
 <script>
-  // Функция для предпросмотра изображения
   function previewMedia(event) {
     const file = event.target.files[0];
     const preview = document.getElementById('image-preview');
@@ -129,30 +119,29 @@
       window.location.href = '/login.html';
       return;
     }
-    const user = JSON.parse(userData);
 
-    if(!title) return alert("Заголовок — это важно!");
-    if(!body && !mediaFile) return alert("Добавьте текст статьи или загрузите файл");
+    const user = JSON.parse(userData);
+    const authorId = user.id || user._id;
+
+    if (!authorId) return alert("Ошибка авторизации. Перевойдите.");
+    if (!title) return alert("Заголовок обязателен!");
 
     const btn = document.getElementById('publish-btn');
     btn.disabled = true;
     btn.innerText = "Публикуем...";
 
+    // Используем FormData для поддержки Multer на бэкенде
     const formData = new FormData();
     formData.append('title', title);
     formData.append('preview', preview);
     formData.append('body', body);
     formData.append('category', category);
-    formData.append('tags', JSON.stringify(tags)); // Отправляем как JSON строку
-    formData.append('authorId', user.id || user._id);
+    formData.append('tags', JSON.stringify(tags));
 
-    // Определяем тип контента
-    let contentType = 'post';
-    if (body.includes('youtube.com') || body.includes('youtu.be')) contentType = 'video';
-    if (mediaFile && mediaFile.type.startsWith('video/')) contentType = 'video';
-    if (mediaFile && mediaFile.type.startsWith('image/')) contentType = 'image';
-
-    formData.append('type', contentType);
+    // Тип контента для логики бэкенда
+    let type = 'post';
+    if (body.includes('youtube.com') || body.includes('youtu.be')) type = 'video';
+    formData.append('type', type);
 
     if (mediaFile) {
       formData.append('mediaFile', mediaFile);
@@ -161,18 +150,25 @@
     try {
       const res = await fetch('/api/content', {
         method: 'POST',
+        headers: {
+          // ВОТ ОН: Тот самый заголовок, который ждет твой server.js
+          'x-author-id': authorId
+        },
+        // Важно: для FormData заголовки Content-Type ставить НЕЛЬЗЯ!
         body: formData
       });
+
+      const data = await res.json();
 
       if (res.ok) {
         alert("Инновация успешно добавлена! 🚀");
         window.location.href = '/';
       } else {
-        const err = await res.json();
-        alert("Ошибка: " + err.error);
+        alert("Ошибка сервера: " + (data.error || "Ошибка валидации"));
       }
     } catch (e) {
-      alert("Ошибка сети. Проверьте подключение к серверу.");
+      console.error(e);
+      alert("Ошибка сети. Проверьте подключение.");
     } finally {
       btn.disabled = false;
       btn.innerText = "Опубликовать в ленту";

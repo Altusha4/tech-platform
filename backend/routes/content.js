@@ -1,105 +1,87 @@
 const express = require("express");
 const router = express.Router();
 const Content = require("../models/Content");
-const mongoose = require("mongoose");
+const Notification = require("../models/Notification");
 
-// --- 1. ПОЛУЧЕНИЕ ЛЕНТЫ (С фильтрацией и авторами) ---
+// --- 1. ПОЛУЧЕНИЕ ЛЕНТЫ ---
 router.get("/", async (req, res) => {
     try {
-        const { category, tag } = req.query;
+        const { category, authorId } = req.query;
         let query = {};
-
-        // Фильтр по категории (кроме "All")
-        if (category && category !== 'All') {
-            query.category = category;
-        }
-
-        // Фильтр по тегу
-        if (tag) {
-            query.tags = tag.toLowerCase();
-        }
+        if (category && category !== 'All') query.category = category;
+        if (authorId) query.authorId = authorId;
 
         const posts = await Content.find(query)
-            .populate('authorId', 'username avatarUrl') // Подтягиваем инфо об авторе
+            .populate('authorId', 'username avatarUrl')
             .sort({ createdAt: -1 });
-
         res.json(posts);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// --- 2. ПОЛУЧЕНИЕ ОДНОГО ПОСТА ---
-router.get("/single/:id", async (req, res) => {
-    try {
-        const post = await Content.findById(req.params.id)
-            .populate('authorId', 'username avatarUrl stats');
-        if (!post) return res.status(404).json({ error: "Пост не найден" });
-        res.json(post);
-    } catch (err) {
-        res.status(404).json({ error: "Некорректный ID поста" });
-    }
-});
-
-// --- 3. УМНЫЙ ЛАЙК (Без перезагрузки и дублей) ---
-router.post("/:id/like", async (req, res) => {
-    try {
-        const { userId } = req.body;
-        const post = await Content.findById(req.params.id);
-
-        if (!post) return res.status(404).json({ error: "Пост не найден" });
-
-        // Проверяем, лайкал ли уже пользователь
-        const isLiked = post.likedBy.includes(userId);
-
-        if (isLiked) {
-            // Убираем лайк
-            post.likes = Math.max(0, post.likes - 1);
-            post.likedBy = post.likedBy.filter(id => id.toString() !== userId);
-        } else {
-            // Ставим лайк
-            post.likes += 1;
-            post.likedBy.push(userId);
-        }
-
-        await post.save();
-        res.json({ likes: post.likes, isLiked: !isLiked });
-    } catch (err) {
-        res.status(400).json({ error: err.message });
-    }
-});
-
-// --- 4. СОЗДАНИЕ ПОСТА (С привязкой к модели) ---
+// --- 2. СОЗДАНИЕ ПОСТА (JSON + Base64) ---
 router.post("/", async (req, res) => {
     try {
-        const { title, body, preview, tags, category, authorId, type, mediaUrl } = req.body;
+        // Теперь все данные гарантированно сидят в req.body
+        const { title, body, preview, tags, category, authorId, type, image } = req.body;
+
+        // Жесткая проверка ID
+        if (!authorId || authorId === "undefined") {
+            return res.status(400).json({ error: "Ошибка: ID автора (authorId) обязателен." });
+        }
+
+        // Обработка тегов (теперь они уже приходят массивом из JSON)
+        const parsedTags = Array.isArray(tags) ? tags : [];
 
         const newPost = new Content({
-            title,
-            body,
-            preview,
-            tags: tags || [],
+            title: title ? title.trim() : "Без названия",
+            body: body ? body.trim() : "",
+            preview: preview ? preview.trim() : "",
+            tags: parsedTags,
             category: category || "Other",
-            authorId,
+            authorId: authorId,
             type: type || "post",
-            mediaUrl: mediaUrl || null,
+            // image здесь — это строка Base64, которую мы сохраняем как ссылку
+            mediaUrl: image || null,
             stats: { views: 0, commentsCount: 0 }
         });
 
         const savedPost = await newPost.save();
         res.status(201).json(savedPost);
     } catch (err) {
+        console.error("Ошибка при сохранении через JSON:", err);
         res.status(400).json({ error: err.message });
     }
 });
 
-// --- 5. УДАЛЕНИЕ ПОСТА ---
-router.delete("/:id", async (req, res) => {
+// --- 3. ЛАЙК + УВЕДОМЛЕНИЕ ---
+router.post("/:id/like", async (req, res) => {
     try {
-        await Content.findByIdAndDelete(req.params.id);
-        res.json({ message: "Публикация удалена" });
+        const { userId } = req.body;
+        const post = await Content.findById(req.params.id);
+        if (!post) return res.status(404).json({ error: "Пост не найден" });
+
+        const isLiked = post.likedBy.includes(userId);
+        if (isLiked) {
+            post.likes = Math.max(0, post.likes - 1);
+            post.likedBy = post.likedBy.filter(id => id.toString() !== userId);
+        } else {
+            post.likes += 1;
+            post.likedBy.push(userId);
+            if (post.authorId.toString() !== userId) {
+                await Notification.create({
+                    recipient: post.authorId,
+                    sender: userId,
+                    type: 'like',
+                    postId: post._id
+                });
+            }
+        }
+        await post.save();
+        res.json({ likes: post.likes, isLiked: !isLiked });
     } catch (err) {
-        res.status(404).json({ error: "Пост не найден" });
+        res.status(400).json({ error: err.message });
     }
 });
 

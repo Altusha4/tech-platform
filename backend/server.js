@@ -16,6 +16,12 @@ const Comment = require('./models/Comment');
 const app = express();
 const publicPath = path.join(__dirname, '..', 'public');
 
+// --- НАСТРОЙКА ЛИМИТОВ И ПАРСЕРОВ ---
+// Увеличиваем лимиты, чтобы принимать Base64 и тяжелые JSON объекты
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(cors());
+
 // --- НАСТРОЙКА ХРАНИЛИЩА ---
 const storageConfigs = {
     avatars: path.join(publicPath, 'uploads', 'avatars'),
@@ -46,13 +52,12 @@ const uploadContent = multer({ storage: contentStorage });
 
 app.use(express.static(publicPath));
 app.use('/uploads', express.static(path.join(publicPath, 'uploads')));
-app.use(cors());
-app.use(express.json());
+
 app.use('/api/auth', authRoutes);
 
 // --- ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ УДАЛЕНИЯ ФАЙЛОВ ---
 const deleteLocalFile = (relativeUrl) => {
-    if (!relativeUrl) return;
+    if (!relativeUrl || relativeUrl.startsWith('data:')) return; // Не удаляем Base64
     const absolutePath = path.join(publicPath, relativeUrl);
     if (fs.existsSync(absolutePath)) {
         fs.unlink(absolutePath, (err) => {
@@ -64,7 +69,8 @@ const deleteLocalFile = (relativeUrl) => {
 // --- 1. ЗАГРУЗКА АВАТАРКИ ---
 app.post('/api/users/upload-avatar', uploadAvatar.single('avatar'), async (req, res) => {
     try {
-        const { userId } = req.body;
+        // Берем userId либо из заголовка, либо из тела
+        const userId = req.headers['x-author-id'] || req.body.userId;
         if (!req.file) return res.status(400).json({ error: "Файл не загружен" });
 
         const user = await User.findById(userId);
@@ -77,12 +83,21 @@ app.post('/api/users/upload-avatar', uploadAvatar.single('avatar'), async (req, 
 });
 
 // --- 2. КОНТЕНТ (CRUD) ---
+// ИСПОЛЬЗУЕМ HEADERS ДЛЯ authorId
 app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => {
     try {
-        const { title, preview, body, category, tags, userId, type } = req.body;
-        let mediaUrl = null;
+        // ЧИТАЕМ ID АВТОРА ИЗ ЗАГОЛОВКА
+        const authorId = req.headers['x-author-id'] || req.body.userId;
+
+        if (!authorId || authorId === 'undefined') {
+            return res.status(400).json({ error: "authorId обязателен (не найден в заголовках x-author-id)" });
+        }
+
+        const { title, preview, body, category, tags, type, imageBase64 } = req.body;
+        let mediaUrl = imageBase64 || null; // Поддержка Base64 если пришел
         let finalType = type || 'post';
 
+        // Если загружен физический файл через Multer
         if (req.file) {
             const folder = req.file.mimetype.startsWith('image/') ? 'images' : 'videos';
             mediaUrl = `/uploads/${folder}/${req.file.filename}`;
@@ -90,38 +105,35 @@ app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => 
         }
 
         const newPost = new Content({
-            type: finalType, title, preview, body, mediaUrl,
+            type: finalType,
+            title: title ? title.trim() : "Без названия",
+            preview,
+            body,
+            mediaUrl,
             category: category || 'Other',
-            tags: tags ? (Array.isArray(tags) ? tags : tags.split(',')) : [],
-            authorId: userId,
-            likes: 0, likedBy: [],
+            tags: tags ? (Array.isArray(tags) ? tags : JSON.parse(tags)) : [],
+            authorId: authorId,
+            likes: 0,
+            likedBy: [],
             stats: { views: 0, commentsCount: 0 }
         });
 
         const savedPost = await newPost.save();
         res.status(201).json(savedPost);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) {
+        console.error("Ошибка создания поста:", err);
+        res.status(500).json({ error: err.message });
+    }
 });
+
+//
 
 app.get('/api/content/single/:id', async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ error: "Неверный ID" });
-        // Добавлен populate для отображения автора на странице поста
         const post = await Content.findById(req.params.id).populate('authorId', 'username avatarUrl');
         if (!post) return res.status(404).json({ error: "Пост не найден" });
         res.json(post);
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.put('/api/content/:id', async (req, res) => {
-    try {
-        const { title, preview, body, category } = req.body;
-        const updatedPost = await Content.findByIdAndUpdate(
-            req.params.id,
-            { title, preview, body, category },
-            { new: true }
-        );
-        res.json({ message: "Пост обновлен!", post: updatedPost });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -129,7 +141,7 @@ app.delete('/api/content/:id', async (req, res) => {
     try {
         const post = await Content.findById(req.params.id);
         if (post) {
-            if (post.mediaUrl) deleteLocalFile(post.mediaUrl);
+            if (post.mediaUrl && !post.mediaUrl.startsWith('data:')) deleteLocalFile(post.mediaUrl);
             await Content.findByIdAndDelete(req.params.id);
             await Comment.deleteMany({ postId: req.params.id });
         }
@@ -137,7 +149,7 @@ app.delete('/api/content/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- 3. ЛЕНТА И ПРОФИЛЬ ---
+// --- 3. ЛЕНТА И ЛАЙКИ ---
 app.get('/api/content', async (req, res) => {
     try {
         const { userId, category } = req.query;
@@ -149,11 +161,13 @@ app.get('/api/content', async (req, res) => {
             .sort({ createdAt: -1 })
             .lean();
 
+        // Синхронизация реального кол-ва комментов
         posts = await Promise.all(posts.map(async (post) => {
             const realCount = await Comment.countDocuments({ postId: post._id });
             return { ...post, stats: { ...post.stats, commentsCount: realCount } };
         }));
 
+        // Рекомендации по интересам
         if (userId && userId !== 'undefined' && mongoose.Types.ObjectId.isValid(userId)) {
             const user = await User.findById(userId);
             if (user && user.interests?.length > 0) {
@@ -166,34 +180,6 @@ app.get('/api/content', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.get('/api/content/user/:userId', async (req, res) => {
-    try {
-        let posts = await Content.find({ authorId: req.params.userId }).sort({ createdAt: -1 }).lean();
-        posts = await Promise.all(posts.map(async (post) => {
-            const realCount = await Comment.countDocuments({ postId: post._id });
-            return { ...post, stats: { ...post.stats, commentsCount: realCount } };
-        }));
-        res.json(posts);
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.get('/api/content/liked/:userId', async (req, res) => {
-    try {
-        let posts = await Content.find({ likedBy: req.params.userId })
-            .populate('authorId', 'username avatarUrl')
-            .sort({ createdAt: -1 })
-            .lean();
-
-        posts = await Promise.all(posts.map(async (post) => {
-            const realCount = await Comment.countDocuments({ postId: post._id });
-            return { ...post, stats: { ...post.stats, commentsCount: realCount } };
-        }));
-
-        res.json(posts);
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// --- 4. ЛАЙКИ И УВЕДОМЛЕНИЯ ---
 app.post('/api/content/:id/like', async (req, res) => {
     try {
         const { userId } = req.body;
@@ -209,7 +195,9 @@ app.post('/api/content/:id/like', async (req, res) => {
             post.likes += 1;
             if (post.authorId.toString() !== userId.toString()) {
                 await Notification.create({
-                    userId: post.authorId, fromUserId: userId, type: 'like',
+                    userId: post.authorId,
+                    fromUserId: userId,
+                    type: 'like',
                     message: `поставил(а) лайк вашему посту: "${post.title}"`,
                     contentId: post._id
                 });
@@ -220,65 +208,34 @@ app.post('/api/content/:id/like', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ИСПРАВЛЕНО: Теперь возвращает полный объект пользователя для сохранения аватара
-app.put('/api/users/update', async (req, res) => {
-    try {
-        const { userId, interests } = req.body;
-        const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            { interests },
-            { new: true }
-        ).select('-passwordHash'); // Вернет все поля, включая avatarUrl
-        res.json({ message: "Профиль обновлен!", user: updatedUser });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.get('/api/notifications/:userId', async (req, res) => {
-    try {
-        const notes = await Notification.find({ userId: req.params.userId })
-            .populate('fromUserId', 'username avatarUrl')
-            .sort({ createdAt: -1 });
-        res.json(notes);
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// --- 5. КОММЕНТАРИИ ---
-app.get('/api/comments/:postId', async (req, res) => {
-    try {
-        const comments = await Comment.find({ postId: req.params.postId })
-            .populate('authorId', 'username avatarUrl')
-            .sort({ createdAt: -1 });
-        res.json(comments);
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
+// --- 4. КОММЕНТАРИИ ---
 app.post('/api/comments', async (req, res) => {
     try {
         const { postId, userId, text } = req.body;
         const newComment = await Comment.create({ postId, authorId: userId, text });
-        await Content.findByIdAndUpdate(postId, { $inc: { 'stats.commentsCount': 1 } });
+        const post = await Content.findByIdAndUpdate(postId, { $inc: { 'stats.commentsCount': 1 } });
+
+        // Уведомление о комментарии
+        if (post && post.authorId.toString() !== userId.toString()) {
+            await Notification.create({
+                userId: post.authorId,
+                fromUserId: userId,
+                type: 'comment',
+                message: `прокомментировал(а) ваш пост: "${post.title}"`,
+                contentId: post._id
+            });
+        }
+
         const populatedComment = await newComment.populate('authorId', 'username avatarUrl');
         res.status(201).json(populatedComment);
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.delete('/api/comments/:id', async (req, res) => {
-    try {
-        const comment = await Comment.findById(req.params.id);
-        if (!comment) return res.status(404).json({ error: "Комментарий не найден" });
-
-        const postId = comment.postId;
-        await Comment.findByIdAndDelete(req.params.id);
-        await Content.findByIdAndUpdate(postId, { $inc: { 'stats.commentsCount': -1 } });
-
-        res.json({ message: "Комментарий удален" });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // --- ЗАПУСК ---
 mongoose.connect(process.env.MONGO_URI)
     .then(() => {
-        console.log("MongoDB Connected Successfully");
-        app.listen(process.env.PORT || 3000, () => console.log(`Server at http://localhost:3000`));
+        console.log("🚀 MongoDB Connected Successfully");
+        const PORT = process.env.PORT || 3000;
+        app.listen(PORT, () => console.log(`📡 Server running at http://localhost:${PORT}`));
     })
-    .catch(err => console.error("Error:", err));
+    .catch(err => console.error("❌ MongoDB Connection Error:", err));

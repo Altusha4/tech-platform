@@ -3,8 +3,8 @@ const mongoose = require('mongoose');
 const contentSchema = new mongoose.Schema({
     title: {
         type: String,
-        required: true,
-        trim: true // Убирает лишние пробелы по краям
+        required: [true, 'Заголовок обязателен'],
+        trim: true
     },
     type: {
         type: String,
@@ -15,30 +15,32 @@ const contentSchema = new mongoose.Schema({
     authorId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        required: [true, 'ID автора обязателен'], // Здесь база выдает ошибку, если автор не передан
+        index: true // Индекс для быстрого поиска постов конкретного юзера
     },
     preview: {
         type: String,
-        trim: true
+        trim: true,
+        maxlength: 300 // Ограничим превью, чтобы карточки не "разрывало"
     },
-    // Основной контент статьи или URL видео
     body: {
         type: String,
         required: false
     },
-    // Путь к файлу на сервере
     mediaUrl: {
         type: String,
         default: null
     },
     category: {
         type: String,
-        enum: ['Programming', 'Gadgets', 'Design', 'Other'], // Фиксируем список для порядка
-        default: 'Other'
+        enum: ['Programming', 'Gadgets', 'Design', 'Other'],
+        default: 'Other',
+        index: true // Индекс для быстрой фильтрации по категориям
     },
     tags: [{
         type: String,
-        lowercase: true // Чтобы поиск по тегам не зависел от регистра
+        lowercase: true,
+        trim: true
     }],
     likes: {
         type: Number,
@@ -48,7 +50,6 @@ const contentSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
-    // Время на чтение в минутах (можно рассчитывать при сохранении)
     readTime: {
         type: Number,
         default: 1
@@ -58,11 +59,11 @@ const contentSchema = new mongoose.Schema({
         commentsCount: { type: Number, default: 0 }
     }
 }, {
-    timestamps: true, // Автоматически создает createdAt и updatedAt
+    timestamps: true,
     collection: 'content'
 });
 
-// Индексы для быстрого глобального поиска по сайту
+// Глобальный текстовый индекс для поиска по ключевым словам
 contentSchema.index({ title: 'text', preview: 'text', tags: 'text' });
 
 module.exports = mongoose.model('Content', contentSchema);
