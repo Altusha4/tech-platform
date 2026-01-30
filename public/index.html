@@ -12,9 +12,12 @@
         .logo { font-size: 20px; font-weight: 700; color: var(--primary); text-decoration: none; letter-spacing: -0.5px; }
         .user-menu { display: flex; align-items: center; gap: 20px; }
 
+        /* Иконка уведомлений */
+        .notif-bell { position: relative; text-decoration: none; font-size: 20px; cursor: pointer; transition: 0.2s; }
+        .notif-dot { position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; background: #ff3b30; border-radius: 50%; border: 2px solid #fff; display: none; }
+
         .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
 
-        /* Поиск */
         .search-container { margin-bottom: 30px; position: relative; }
         .global-search {
             width: 100%; padding: 16px 25px; border-radius: 16px; border: 1px solid #d2d2d7;
@@ -22,7 +25,6 @@
         }
         .global-search:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(0,113,227,0.1); }
 
-        /* Лейаут */
         .main-layout { display: grid; grid-template-columns: 1fr 300px; gap: 30px; }
 
         .category-bar { display: flex; gap: 8px; margin-bottom: 20px; align-items: center; overflow-x: auto; padding-bottom: 8px; }
@@ -36,7 +38,6 @@
         .view-btn { border: none; background: none; padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 16px; transition: 0.2s; display: flex; align-items: center; opacity: 0.6; }
         .view-btn.active { background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); opacity: 1; }
 
-        /* Пост-стаб */
         .post-stub {
             background: white; border-radius: 16px; padding: 16px 20px; display: flex;
             align-items: center; gap: 12px; margin-bottom: 25px; cursor: pointer;
@@ -44,7 +45,6 @@
         }
         .post-stub-input { background: #f5f5f7; flex-grow: 1; padding: 10px 18px; border-radius: 20px; color: #86868b; }
 
-        /* СЕТКА ПУБЛИКАЦИЙ */
         .grid { display: grid; gap: 25px; transition: 0.3s; }
         .grid.view-list { grid-template-columns: 1fr; }
         .grid.view-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
@@ -60,7 +60,6 @@
 
         .type-tag { font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.5px; }
 
-        /* Медиа-контейнер */
         .media-container {
             width: calc(100% + 48px); margin: 0 -24px 15px -24px;
             max-height: 400px; overflow: hidden; background: #000;
@@ -70,8 +69,6 @@
         .view-grid .media-container { width: calc(100% + 32px); margin: 0 -16px 15px -16px; max-height: 200px; }
 
         .media-container img { width: 100%; height: 100%; object-fit: cover; }
-
-        /* Иконка Play для видео */
         .play-overlay {
             position: absolute; background: rgba(0,0,0,0.6); color: white;
             width: 50px; height: 50px; border-radius: 50%; display: flex;
@@ -89,9 +86,18 @@
         .actions-bar { margin-top: auto; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f5f5f7; padding-top: 15px; }
         .action-btn {
             background: #f5f5f7; border: none; color: #1d1d1f;
-            padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 6px; font-size: 13px;
+            padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 6px; font-size: 13px; transition: 0.2s;
         }
         .like-btn.active { background: #ff3b30; color: white; }
+
+        .comments-section { margin-top: 15px; padding-top: 15px; border-top: 1px dashed #eee; display: none; }
+        .comment-item { display: flex; gap: 10px; margin-bottom: 12px; font-size: 13px; }
+        .comment-bubble { background: #f5f5f7; padding: 10px; border-radius: 12px; flex-grow: 1; }
+
+        .comment-input-area { display: flex; gap: 8px; margin-top: 15px; padding-top: 10px; border-top: 1px solid #f5f5f7; }
+        .comment-input { flex-grow: 1; padding: 8px 15px; border: 1px solid #d2d2d7; border-radius: 20px; outline: none; font-size: 13px; }
+        .comment-send-btn { border: none; background: var(--primary); color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .comment-send-btn:hover { transform: scale(1.1); }
 
         .sidebar-box { background: white; padding: 24px; border-radius: 18px; box-shadow: var(--card-shadow); position: sticky; top: 100px; }
         .sidebar-box h3 { margin-top: 0; font-size: 18px; margin-bottom: 15px; }
@@ -150,8 +156,8 @@
     let currentCategory = 'All';
     let allPosts = [];
     let currentView = localStorage.getItem('preferredView') || 'list';
+    const currentUser = JSON.parse(localStorage.getItem('user'));
 
-    // Функция для получения ID видео YouTube
     function getYouTubeID(url) {
         if (!url) return null;
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -160,10 +166,10 @@
     }
 
     async function checkAuth() {
-        const userData = localStorage.getItem('user');
-        if (!userData) { window.location.href = '/login.html'; return; }
-        renderUserHeader(JSON.parse(userData));
+        if (!currentUser) { window.location.href = '/login.html'; return; }
+        renderUserHeader(currentUser);
         setView(currentView);
+        checkNewNotifications();
     }
 
     function renderUserHeader(user) {
@@ -176,14 +182,27 @@
         if(miniPlaceholder) miniPlaceholder.innerHTML = avatarHtml;
 
         authSection.innerHTML = `
+            <a href="/notifications.html" class="notif-bell" id="notif-bell">
+                🔔<span class="notif-dot" id="notif-dot"></span>
+            </a>
             <a href="/profile.html" style="text-decoration:none; color:inherit; font-weight:600; display:flex; align-items:center; gap:8px;">
                 ${avatarHtml} ${user.username}
             </a>
-            <button onclick="logout()" style="background:none; border:1px solid #d2d2d7; padding:6px 12px; border-radius:8px; cursor:pointer;">Выход</button>
+            <button onclick="logout()" style="background:none; border:1px solid #d2d2d7; padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px;">Выход</button>
         `;
     }
 
-    function logout() { localStorage.removeItem('user'); window.location.href = '/login.html'; }
+    async function checkNewNotifications() {
+        try {
+            const userId = currentUser.id || currentUser._id;
+            const res = await fetch(`/api/notifications/${userId}`);
+            const data = await res.json();
+            const hasUnread = data.some(n => !n.read);
+            if (hasUnread) document.getElementById('notif-dot').style.display = 'block';
+        } catch (e) {}
+    }
+
+    function logout() { localStorage.removeItem('user'); localStorage.removeItem('token'); window.location.href = '/login.html'; }
 
     function setView(view) {
         currentView = view;
@@ -213,33 +232,41 @@
     }
 
     async function fetchFeed() {
-        const feed = document.getElementById('feed');
-        feed.innerHTML = '<div class="skeleton-card"></div>';
-
         try {
             const res = await fetch(`/api/content?category=${currentCategory}`);
             allPosts = await res.json();
             renderPosts(allPosts);
             updateTrendingTags(allPosts);
-        } catch (e) {
-            feed.innerHTML = '<div class="empty-state">Ошибка сервера</div>';
-        }
+        } catch (e) { console.error(e); }
     }
 
     function renderPosts(data) {
         const feed = document.getElementById('feed');
-        const user = JSON.parse(localStorage.getItem('user'));
-        const userId = user?.id || user?._id;
+        const userId = currentUser?.id || currentUser?._id;
 
         if (!data.length) {
             feed.innerHTML = '<div class="empty-state">Пусто</div>';
             return;
         }
 
-        feed.innerHTML = data.map(item => {
-            const isRec = user?.interests?.some(tag => item.tags.includes(tag));
+        // --- ЛОГИКА СОРТИРОВКИ ПО ИНТЕРЕСАМ ---
+        const recommended = [];
+        const normal = [];
 
-            // Важное исправление: проверяем и mediaUrl, и body на наличие YouTube
+        data.forEach(item => {
+            const hasMatch = currentUser?.interests?.some(interest =>
+                item.tags.map(t => t.toLowerCase()).includes(interest.toLowerCase())
+            );
+            if (hasMatch) recommended.push(item);
+            else normal.push(item);
+        });
+
+        const sortedData = [...recommended, ...normal];
+
+        feed.innerHTML = sortedData.map(item => {
+            const isRec = currentUser?.interests?.some(interest =>
+                item.tags.map(t => t.toLowerCase()).includes(interest.toLowerCase())
+            );
             const ytId = getYouTubeID(item.mediaUrl) || getYouTubeID(item.body);
             const userHasLiked = item.likedBy?.includes(userId);
 
@@ -248,7 +275,8 @@
             if (item.type === 'image') typeLabel = '🖼️ Фото';
 
             return `
-            <div class="card ${isRec ? 'recommended' : ''}">
+            <div class="card ${isRec ? 'recommended' : ''}" id="post-${item._id}">
+                ${isRec ? '<span style="font-size: 10px; color: var(--primary); font-weight: 800; margin-bottom: 5px; display: block;">✨ РЕКОМЕНДОВАНО</span>' : ''}
                 <span class="type-tag">${typeLabel}</span>
                 <h3 style="margin:0 0 10px 0; cursor:pointer;" onclick="location.href='/post.html?id=${item._id}'">${item.title}</h3>
 
@@ -260,7 +288,7 @@
                                  <img src="https://img.youtube.com/vi/${ytId}/maxresdefault.jpg" onerror="this.src='https://img.youtube.com/vi/${ytId}/mqdefault.jpg'">
                                  <div class="play-overlay">▶</div>
                                </div>`
-                    : `<p style="color:#424245; font-size:14px;">${item.preview || ''}</p>`)
+                    : `<p style="color:#424245; font-size:14px; line-height: 1.5;">${item.preview || ''}</p>`)
             }
                 </div>
 
@@ -271,20 +299,89 @@
                 <div class="actions-bar">
                     <span style="font-size:13px; color:#86868b;">👤 <b>${item.authorId?.username || 'User'}</b></span>
                     <div style="display:flex; gap:8px;">
-                        <button onclick="handleLike('${item._id}')" class="action-btn like-btn ${userHasLiked ? 'active' : ''}">
-                            ❤️ <span id="likes-${item._id}">${item.likes}</span>
+                        <button onclick="handleLike('${item._id}')" class="action-btn like-btn ${userHasLiked ? 'active' : ''}" id="like-btn-${item._id}">
+                            ❤️ <span id="likes-count-${item._id}">${item.likes}</span>
                         </button>
                         <button onclick="toggleComments('${item._id}')" class="action-btn">
-                            💬 ${item.stats?.commentsCount || 0}
+                            💬 <span id="comm-count-${item._id}">${item.stats?.commentsCount || 0}</span>
                         </button>
                     </div>
                 </div>
 
                 <div id="comments-block-${item._id}" class="comments-section">
                     <div id="comments-list-${item._id}"></div>
+                    <div class="comment-input-area">
+                        <input type="text" id="input-${item._id}" class="comment-input" placeholder="Напишите комментарий...">
+                        <button onclick="addCommentMain('${item._id}')" class="comment-send-btn">🚀</button>
+                    </div>
                 </div>
             </div>`;
         }).join('');
+    }
+
+    async function handleLike(id) {
+        const userId = currentUser.id || currentUser._id;
+        try {
+            const res = await fetch(`/api/content/${id}/like`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ userId: userId })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const btn = document.getElementById(`like-btn-${id}`);
+                const span = document.getElementById(`likes-count-${id}`);
+
+                // Бесшовное обновление
+                btn.classList.toggle('active', data.isLiked);
+                span.innerText = data.likes;
+
+                // Обновляем в локальном массиве для поиска
+                const post = allPosts.find(p => p._id === id);
+                if(post) {
+                    post.likes = data.likes;
+                    if(data.isLiked) post.likedBy.push(userId);
+                    else post.likedBy = post.likedBy.filter(uid => uid !== userId);
+                }
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    async function toggleComments(id) {
+        const block = document.getElementById(`comments-block-${id}`);
+        block.style.display = block.style.display === 'block' ? 'none' : 'block';
+        if(block.style.display === 'block') loadCommentsMain(id);
+    }
+
+    async function loadCommentsMain(postId) {
+        const list = document.getElementById(`comments-list-${postId}`);
+        try {
+            const res = await fetch(`/api/comments/${postId}`);
+            const comments = await res.json();
+            list.innerHTML = comments.map(c => `
+                <div class="comment-item">
+                    <div class="comment-bubble"><b>${c.authorId?.username || 'User'}:</b> ${c.text}</div>
+                </div>
+            `).join('');
+        } catch (e) { console.error(e); }
+    }
+
+    async function addCommentMain(postId) {
+        const input = document.getElementById(`input-${postId}`);
+        if(!input.value.trim() || !currentUser) return;
+        try {
+            const res = await fetch('/api/comments', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ postId, userId: currentUser.id || currentUser._id, text: input.value.trim() })
+            });
+            if(res.ok) {
+                input.value = '';
+                loadCommentsMain(postId);
+                const countSpan = document.getElementById(`comm-count-${postId}`);
+                countSpan.innerText = parseInt(countSpan.innerText) + 1;
+            }
+        } catch (e) { console.error(e); }
     }
 
     function updateTrendingTags(posts) {
@@ -306,30 +403,6 @@
         document.getElementById('global-search').value = tag;
         handleSearch();
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    async function handleLike(id) {
-        const user = JSON.parse(localStorage.getItem('user'));
-        const res = await fetch(`/api/content/${id}/like`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ userId: user.id || user._id })
-        });
-        if(res.ok) fetchFeed();
-    }
-
-    async function toggleComments(id) {
-        const block = document.getElementById(`comments-block-${id}`);
-        block.style.display = block.style.display === 'block' ? 'none' : 'block';
-        if(block.style.display === 'block') {
-            const res = await fetch(`/api/comments/${id}`);
-            const comments = await res.json();
-            document.getElementById(`comments-list-${id}`).innerHTML = comments.map(c => `
-                <div class="comment-item">
-                    <div class="comment-bubble"><b>${c.authorId?.username}:</b> ${c.text}</div>
-                </div>
-            `).join('');
-        }
     }
 
     checkAuth();

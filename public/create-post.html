@@ -2,50 +2,68 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Создать публикацию</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Создать публикацию | TechPlatform</title>
   <style>
-    :root { --primary: #0071e3; --bg: #f5f5f7; }
-    body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; }
-    .editor-container { max-width: 700px; margin: 40px auto; background: white; padding: 40px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
-    .back-link { text-decoration: none; color: var(--primary); font-weight: 500; display: inline-block; margin-bottom: 20px; }
+    :root { --primary: #0071e3; --bg: #f5f5f7; --border: #d2d2d7; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #1d1d1f; }
 
-    label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 14px; color: #333; }
+    .editor-container { max-width: 700px; margin: 40px auto; background: white; padding: 40px; border-radius: 28px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
+    .back-link { text-decoration: none; color: var(--primary); font-weight: 600; display: inline-block; margin-bottom: 25px; font-size: 15px; }
+
+    h1 { font-size: 32px; letter-spacing: -0.8px; margin-bottom: 30px; }
+
+    label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; color: #1d1d1f; }
     input, textarea, select {
-      width: 100%; padding: 12px; margin-bottom: 20px;
-      border: 1px solid #ddd; border-radius: 10px;
-      font-size: 16px; box-sizing: border-box; font-family: inherit;
+      width: 100%; padding: 14px; margin-bottom: 20px;
+      border: 1px solid var(--border); border-radius: 12px;
+      font-size: 16px; box-sizing: border-box; font-family: inherit; outline: none;
+      transition: 0.2s; background: #fafafa;
     }
-    textarea { height: 80px; resize: none; }
+    input:focus, textarea:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 4px rgba(0,113,227,0.1); }
 
-    /* Стили для поля файла */
+    textarea { height: 120px; resize: none; }
+
+    /* Область загрузки файла */
     .file-input-wrapper {
-      border: 2px dashed #ddd; padding: 20px; text-align: center;
-      border-radius: 12px; margin-bottom: 20px; cursor: pointer; transition: 0.2s;
+      border: 2px dashed var(--border); padding: 30px; text-align: center;
+      border-radius: 16px; margin-bottom: 20px; cursor: pointer; transition: 0.2s;
+      position: relative; background: #fafafa;
     }
-    .file-input-wrapper:hover { border-color: var(--primary); background: #fbfdff; }
+    .file-input-wrapper:hover { border-color: var(--primary); background: #fff; }
+    #image-preview { width: 100%; max-height: 300px; object-fit: cover; border-radius: 12px; display: none; margin-top: 15px; }
 
+    /* Группа тегов */
     .tag-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px; }
     .tag-checkbox { display: none; }
-    .tag-label { padding: 8px 16px; border: 1px solid #ddd; border-radius: 20px; cursor: pointer; font-size: 13px; transition: 0.2s; background: #fff; }
-    .tag-checkbox:checked + .tag-label { background: var(--primary); color: white; border-color: var(--primary); }
+    .tag-label {
+      padding: 10px 20px; border: 1px solid var(--border); border-radius: 20px;
+      cursor: pointer; font-size: 13px; transition: 0.2s; background: #fff; font-weight: 500;
+    }
+    .tag-checkbox:checked + .tag-label { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 10px rgba(0,113,227,0.2); }
 
-    .publish-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 18px; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; }
-    .publish-btn:disabled { background: #ccc; cursor: not-allowed; }
+    .publish-btn {
+      width: 100%; background: var(--primary); color: white; border: none;
+      padding: 18px; border-radius: 14px; font-size: 18px; font-weight: 700;
+      cursor: pointer; transition: 0.3s;
+    }
+    .publish-btn:hover { background: #0077ed; transform: translateY(-2px); }
+    .publish-btn:disabled { background: #d2d2d7; cursor: not-allowed; transform: none; }
   </style>
 </head>
 <body>
 
 <div class="editor-container">
   <a href="/" class="back-link">← На главную</a>
-  <h1>Новая публикация 🚀</h1>
+  <h1>Создать инновацию 🚀</h1>
 
-  <label>Заголовок (title)</label>
-  <input type="text" id="post-title" placeholder="Напр: Мой новый проект">
+  <label>Заголовок публикации</label>
+  <input type="text" id="post-title" placeholder="Как Apple Glass изменят мир...">
 
-  <label>Краткое превью (preview)</label>
-  <input type="text" id="post-preview" placeholder="Краткое описание для карточки">
+  <label>Краткое превью (для ленты)</label>
+  <input type="text" id="post-preview" placeholder="Краткое описание, которое зацепит читателя">
 
-  <label>Категория (category)</label>
+  <label>Категория</label>
   <select id="post-category">
     <option value="Programming">Programming</option>
     <option value="Gadgets">Gadgets</option>
@@ -53,28 +71,50 @@
     <option value="Other">Other</option>
   </select>
 
-  <label>Ссылка или текст (body)</label>
-  <textarea id="post-body" placeholder="URL видео с YouTube или текст статьи..."></textarea>
+  <label>Контент (текст статьи или ссылка на YouTube)</label>
+  <textarea id="post-body" placeholder="Напишите здесь вашу историю или просто вставьте ссылку на YouTube видео..."></textarea>
 
-  <label>Загрузить медиа (фото или видео)</label>
-  <div class="file-input-wrapper">
-    <input type="file" id="media-file" accept="image/*,video/*">
+  <label>Загрузить изображение или видеофайл</label>
+  <div class="file-input-wrapper" onclick="document.getElementById('media-file').click()">
+    <div id="upload-text">Нажмите, чтобы выбрать файл (JPG, PNG, MP4)</div>
+    <input type="file" id="media-file" accept="image/*,video/*" style="display: none;" onchange="previewMedia(event)">
+    <img id="image-preview" alt="Превью">
   </div>
 
-  <label>Теги (tags)</label>
+  <label>Теги интересов (помогут попасть в рекомендации) 🎯</label>
   <div class="tag-group">
-    <input type="checkbox" id="t1" class="tag-checkbox" value="mongodb"><label for="t1" class="tag-label">mongodb</label>
-    <input type="checkbox" id="t2" class="tag-checkbox" value="javascript"><label for="t2" class="tag-label">javascript</label>
-    <input type="checkbox" id="t3" class="tag-checkbox" value="node"><label for="t3" class="tag-label">node</label>
-    <input type="checkbox" id="t4" class="tag-checkbox" value="apple"><label for="t4" class="tag-label">apple</label>
-    <input type="checkbox" id="t5" class="tag-checkbox" value="iphone"><label for="t5" class="tag-label">iphone</label>
-    <input type="checkbox" id="t6" class="tag-checkbox" value="tech"><label for="t6" class="tag-label">tech</label>
+    <input type="checkbox" id="t1" class="tag-checkbox" value="programming"><label for="t1" class="tag-label">💻 programming</label>
+    <input type="checkbox" id="t2" class="tag-checkbox" value="design"><label for="t2" class="tag-label">🎨 design</label>
+    <input type="checkbox" id="t3" class="tag-checkbox" value="gadgets"><label for="t3" class="tag-label">📱 gadgets</label>
+    <input type="checkbox" id="t4" class="tag-checkbox" value="mongodb"><label for="t4" class="tag-label">💾 mongodb</label>
+    <input type="checkbox" id="t5" class="tag-checkbox" value="node"><label for="t5" class="tag-label">⚙️ node</label>
+    <input type="checkbox" id="t6" class="tag-checkbox" value="future"><label for="t6" class="tag-label">🚀 future</label>
   </div>
 
-  <button onclick="publish()" id="publish-btn" class="publish-btn">Опубликовать</button>
+  <button onclick="publish()" id="publish-btn" class="publish-btn">Опубликовать в ленту</button>
 </div>
 
 <script>
+  // Функция для предпросмотра изображения
+  function previewMedia(event) {
+    const file = event.target.files[0];
+    const preview = document.getElementById('image-preview');
+    const uploadText = document.getElementById('upload-text');
+
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        preview.src = e.target.result;
+        preview.style.display = 'block';
+        uploadText.innerText = `Файл выбран: ${file.name}`;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      preview.style.display = 'none';
+      if(file) uploadText.innerText = `Файл выбран: ${file.name}`;
+    }
+  }
+
   async function publish() {
     const title = document.getElementById('post-title').value.trim();
     const preview = document.getElementById('post-preview').value.trim();
@@ -84,28 +124,35 @@
     const mediaFile = document.getElementById('media-file').files[0];
 
     const userData = localStorage.getItem('user');
-    if (!userData) return alert("Войдите в систему");
+    if (!userData) {
+      alert("Пожалуйста, войдите в систему");
+      window.location.href = '/login.html';
+      return;
+    }
     const user = JSON.parse(userData);
 
-    // Валидация: нужен либо текст/ссылка, либо файл
-    if(!title) return alert("Заголовок обязателен");
-    if(!body && !mediaFile) return alert("Добавьте описание или загрузите файл");
+    if(!title) return alert("Заголовок — это важно!");
+    if(!body && !mediaFile) return alert("Добавьте текст статьи или загрузите файл");
 
     const btn = document.getElementById('publish-btn');
     btn.disabled = true;
-    btn.innerText = "Загрузка...";
+    btn.innerText = "Публикуем...";
 
-    // Создаем FormData для отправки файлов
     const formData = new FormData();
     formData.append('title', title);
     formData.append('preview', preview);
     formData.append('body', body);
     formData.append('category', category);
-    formData.append('tags', tags.join(',')); // Отправляем массив как строку через запятую
-    formData.append('userId', user.id || user._id);
+    formData.append('tags', JSON.stringify(tags)); // Отправляем как JSON строку
+    formData.append('authorId', user.id || user._id);
 
-    // Определяем базовый тип (сервер его уточнит по файлу)
-    formData.append('type', (body.includes('youtube') || body.includes('youtu.be')) ? 'video' : 'post');
+    // Определяем тип контента
+    let contentType = 'post';
+    if (body.includes('youtube.com') || body.includes('youtu.be')) contentType = 'video';
+    if (mediaFile && mediaFile.type.startsWith('video/')) contentType = 'video';
+    if (mediaFile && mediaFile.type.startsWith('image/')) contentType = 'image';
+
+    formData.append('type', contentType);
 
     if (mediaFile) {
       formData.append('mediaFile', mediaFile);
@@ -114,22 +161,21 @@
     try {
       const res = await fetch('/api/content', {
         method: 'POST',
-        // Заголовок Content-Type НЕ ставим, браузер сам поставит multipart/form-data
         body: formData
       });
 
       if (res.ok) {
-        alert("Опубликовано!");
+        alert("Инновация успешно добавлена! 🚀");
         window.location.href = '/';
       } else {
         const err = await res.json();
         alert("Ошибка: " + err.error);
       }
     } catch (e) {
-      alert("Ошибка сети");
+      alert("Ошибка сети. Проверьте подключение к серверу.");
     } finally {
       btn.disabled = false;
-      btn.innerText = "Опубликовать";
+      btn.innerText = "Опубликовать в ленту";
     }
   }
 </script>

@@ -2,52 +2,144 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Tech Platform - Вход</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход | TechPlatform</title>
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f2f5; margin: 0; }
-        .login-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-        h2 { text-align: center; color: #1d1d1f; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #0071e3; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
-        button:hover { background: #0077ed; }
-        .error { color: red; font-size: 14px; text-align: center; display: none; }
+        :root { --primary: #0071e3; --bg: #f5f5f7; --error: #ff3b30; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; background: var(--bg); margin: 0;
+        }
+
+        .login-card {
+            background: white; padding: 45px 40px; border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.05); width: 100%;
+            max-width: 400px; text-align: center; box-sizing: border-box;
+            transition: transform 0.3s ease;
+        }
+
+        h2 { margin: 0 0 10px 0; color: #1d1d1f; font-size: 26px; letter-spacing: -0.5px; }
+        .subtitle { color: #86868b; margin-bottom: 30px; font-size: 15px; }
+
+        input {
+            width: 100%; padding: 14px 16px; margin: 8px 0;
+            border: 1px solid #d2d2d7; border-radius: 12px;
+            box-sizing: border-box; font-size: 16px; outline: none;
+            transition: 0.2s; background: #fafafa;
+        }
+        input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 4px rgba(0,113,227,0.1); }
+
+        .error-box {
+            background: #fff2f1; color: var(--error); padding: 12px;
+            border-radius: 10px; font-size: 14px; margin-bottom: 20px;
+            display: none; border: 1px solid rgba(255,59,48,0.2);
+            animation: shake 0.4s ease;
+        }
+
+        button {
+            width: 100%; padding: 16px; background: var(--primary);
+            color: white; border: none; border-radius: 12px;
+            cursor: pointer; font-size: 16px; font-weight: 600;
+            transition: 0.3s; margin-top: 15px; position: relative;
+        }
+        button:hover { background: #0077ed; transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
+        button:disabled { background: #d2d2d7; cursor: not-allowed; }
+
+        .footer-text { margin-top: 25px; font-size: 14px; color: #86868b; }
+        .footer-text a { color: var(--primary); text-decoration: none; font-weight: 500; }
+        .footer-text a:hover { text-decoration: underline; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        /* Спиннер загрузки */
+        .spinner {
+            display: none; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite;
+            position: absolute; right: 20px; top: 15px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
+
 <div class="login-card">
-    <h2>Вход в систему</h2>
-    <p id="error-msg" class="error">Неверный email или пароль</p>
+    <h2>С возвращением</h2>
+    <p class="subtitle">Войдите, чтобы видеть свежие инновации</p>
+
+    <div id="error-box" class="error-box"></div>
+
     <form id="login-form">
-        <input type="email" id="email" placeholder="Email (например, akbota@example.com)" required>
-        <input type="password" id="password" placeholder="Пароль" required>
-        <button type="submit">Войти</button>
+        <input type="email" id="email" placeholder="Email" required autocomplete="email">
+        <input type="password" id="password" placeholder="Пароль" required autocomplete="current-password">
+        <button type="submit" id="login-btn">
+            <span>Войти</span>
+            <div class="spinner" id="loader"></div>
+        </button>
     </form>
-    <p style="text-align: center; font-size: 14px; margin-top: 20px;">
-        Нет аккаунта? <a href="/register.html">Зарегистрироваться</a>
+
+    <p class="footer-text">
+        Нет аккаунта? <a href="/register.html">Создать аккаунт</a>
     </p>
 </div>
 
 <script>
-    document.getElementById('login-form').onsubmit = async (e) => {
+    const loginForm = document.getElementById('login-form');
+    const errorBox = document.getElementById('error-box');
+    const loginBtn = document.getElementById('login-btn');
+    const loader = document.getElementById('loader');
+
+    // Скрывать ошибку при начале ввода
+    document.querySelectorAll('input').forEach(input => {
+        input.oninput = () => { errorBox.style.display = 'none'; };
+    });
+
+    loginForm.onsubmit = async (e) => {
         e.preventDefault();
-        const email = document.getElementById('email').value;
+
+        const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
 
-        const res = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
+        // Состояние загрузки
+        loginBtn.disabled = true;
+        loginBtn.querySelector('span').innerText = 'Проверка...';
+        loader.style.display = 'block';
 
-        const data = await res.json();
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
 
-        if (res.ok) {
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('user', JSON.stringify(data.user));
-            window.location.href = '/';
-        } else {
-            document.getElementById('error-msg').style.display = 'block';
-            document.getElementById('error-msg').innerText = data.error;
+            const data = await res.json();
+
+            if (res.ok) {
+                // Успешный вход
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+
+                loginBtn.style.background = '#34c759';
+                loginBtn.querySelector('span').innerText = 'Успешно!';
+
+                setTimeout(() => { window.location.href = '/'; }, 800);
+            } else {
+                // Ошибка
+                throw new Error(data.error || 'Неверные данные для входа');
+            }
+        } catch (err) {
+            errorBox.innerText = err.message;
+            errorBox.style.display = 'block';
+
+            // Сброс кнопки
+            loginBtn.disabled = false;
+            loginBtn.querySelector('span').innerText = 'Войти';
+            loader.style.display = 'none';
         }
     };
 </script>
