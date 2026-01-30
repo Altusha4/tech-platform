@@ -3,13 +3,14 @@ const mongoose = require('mongoose');
 const contentSchema = new mongoose.Schema({
     title: {
         type: String,
-        required: true
+        required: true,
+        trim: true // Убирает лишние пробелы по краям
     },
     type: {
         type: String,
-        // Расширили список типов для поддержки изображений и обычного текста
         enum: ['video', 'post', 'article', 'image', 'text'],
-        required: true
+        required: true,
+        default: 'post'
     },
     authorId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -17,23 +18,27 @@ const contentSchema = new mongoose.Schema({
         required: true
     },
     preview: {
-        type: String
+        type: String,
+        trim: true
     },
-    // Поле body для текста статьи или ссылки на YouTube
+    // Основной контент статьи или URL видео
     body: {
-        type: String
+        type: String,
+        required: false
     },
-    // Поле для хранения пути к загруженному файлу (картинке или видео)
+    // Путь к файлу на сервере
     mediaUrl: {
         type: String,
         default: null
     },
     category: {
         type: String,
+        enum: ['Programming', 'Gadgets', 'Design', 'Other'], // Фиксируем список для порядка
         default: 'Other'
     },
     tags: [{
-        type: String
+        type: String,
+        lowercase: true // Чтобы поиск по тегам не зависел от регистра
     }],
     likes: {
         type: Number,
@@ -43,16 +48,21 @@ const contentSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
-    // Статистика поста
+    // Время на чтение в минутах (можно рассчитывать при сохранении)
+    readTime: {
+        type: Number,
+        default: 1
+    },
     stats: {
         views: { type: Number, default: 0 },
         commentsCount: { type: Number, default: 0 }
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
     }
-}, { timestamps: true });
+}, {
+    timestamps: true, // Автоматически создает createdAt и updatedAt
+    collection: 'content'
+});
 
-// Экспортируем модель. Третий аргумент 'content' — имя коллекции в MongoDB
-module.exports = mongoose.model('Content', contentSchema, 'content');
+// Индексы для быстрого глобального поиска по сайту
+contentSchema.index({ title: 'text', preview: 'text', tags: 'text' });
+
+module.exports = mongoose.model('Content', contentSchema);

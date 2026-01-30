@@ -2,10 +2,11 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Просмотр публикации | TechPlatform</title>
   <style>
     :root { --primary: #0071e3; --bg: #f5f5f7; --red: #ff3b30; }
-    body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #1d1d1f; }
 
     /* Прогресс-бар чтения */
     #progress-container { position: fixed; top: 0; left: 0; width: 100%; height: 4px; background: rgba(255,255,255,0.2); z-index: 2000; }
@@ -14,38 +15,45 @@
     .post-container { max-width: 800px; margin: 20px auto; background: white; padding: 40px; border-radius: 28px; box-shadow: 0 4px 25px rgba(0,0,0,0.05); }
 
     /* Шапка поста */
-    .post-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-    .meta-info { color: #86868b; font-size: 14px; margin-bottom: 8px; }
+    .post-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; }
+    .meta-info { color: #86868b; font-size: 14px; margin-bottom: 8px; font-weight: 500; }
 
     /* Кнопка закладок */
     .bookmark-btn { background: #f5f5f7; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
     .bookmark-btn:hover { background: #e8e8ed; transform: scale(1.1); }
     .bookmark-btn.active { background: var(--primary); color: white; }
 
+    /* Медиа-контент */
     .full-media { width: 100%; border-radius: 20px; margin-bottom: 30px; background: #000; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-    .full-media video, .full-media img { width: 100%; display: block; }
-    .full-media iframe { width: 100%; aspect-ratio: 16/9; border: none; }
+    .full-media video, .full-media img { width: 100%; display: block; max-height: 500px; object-fit: contain; }
+    .full-media iframe { width: 100%; aspect-ratio: 16/9; border: none; display: block; }
 
     .post-body { line-height: 1.8; font-size: 19px; color: #1d1d1f; margin-bottom: 40px; white-space: pre-line; }
-    .interest-tag { display: inline-block; background: #f5f5f7; color: #515154; padding: 6px 14px; border-radius: 10px; font-size: 14px; margin-right: 8px; text-decoration: none; transition: 0.2s; }
+
+    .interest-tag { display: inline-block; background: #f5f5f7; color: #515154; padding: 6px 14px; border-radius: 10px; font-size: 14px; margin-right: 8px; text-decoration: none; transition: 0.2s; font-weight: 500; }
     .interest-tag:hover { background: var(--primary); color: white; }
 
-    .back-link { display: inline-block; margin-bottom: 25px; text-decoration: none; color: var(--primary); font-weight: 600; font-size: 15px; }
+    .back-link { display: inline-block; margin-bottom: 25px; text-decoration: none; color: var(--primary); font-weight: 600; font-size: 15px; transition: 0.2s; }
+    .back-link:hover { opacity: 0.7; }
 
     /* Комментарии */
     .comments-section { margin-top: 50px; border-top: 1px solid #f5f5f7; padding-top: 35px; }
     .comment-item { display: flex; gap: 15px; margin-bottom: 20px; }
     .comment-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-    .comment-bubble { background: #f5f5f7; padding: 15px 20px; border-radius: 20px; flex-grow: 1; }
+    .comment-bubble { background: #f5f5f7; padding: 15px 20px; border-radius: 20px; flex-grow: 1; position: relative; }
     .comment-bubble strong { display: block; font-size: 14px; margin-bottom: 5px; color: #1d1d1f; }
 
     .comment-input-area { display: flex; gap: 12px; margin-top: 30px; background: white; padding: 5px; border-radius: 30px; border: 1px solid #d2d2d7; }
     .comment-input { flex-grow: 1; border: none; padding: 12px 20px; border-radius: 30px; outline: none; font-size: 15px; }
-    .comment-send-btn { background: var(--primary); color: white; border: none; width: 42px; height: 42px; border-radius: 50%; cursor: pointer; transition: 0.2s; }
-    .comment-send-btn:hover { transform: scale(1.1); }
+    .comment-send-btn { background: var(--primary); color: white; border: none; width: 42px; height: 42px; border-radius: 50%; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
 
     .delete-btn { cursor: pointer; opacity: 0.3; transition: 0.2s; font-size: 14px; }
     .delete-btn:hover { opacity: 1; color: var(--red); }
+
+    @media (max-width: 600px) {
+      .post-container { padding: 20px; margin: 10px; }
+      .post-body { font-size: 17px; }
+    }
   </style>
 </head>
 <body>
@@ -56,11 +64,11 @@
   <a href="/" class="back-link">← Назад в ленту</a>
 
   <div id="post-view">
-    <p style="text-align: center; color: #888;">Загрузка контента...</p>
+    <p style="text-align: center; color: #888; padding: 50px 0;">Загрузка инновации...</p>
   </div>
 
   <div class="comments-section">
-    <h3 style="margin-bottom: 25px;">Комментарии (<span id="comm-total">0</span>)</h3>
+    <h3 style="margin-bottom: 25px;">Дискуссия (<span id="comm-total">0</span>)</h3>
     <div id="comments-list"></div>
 
     <div class="comment-input-area">
@@ -77,69 +85,85 @@
 
   // Индикатор чтения
   window.onscroll = () => {
-    const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+    const winScroll = document.documentElement.scrollTop;
     const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
     const scrolled = (winScroll / height) * 100;
     document.getElementById("progress-bar").style.width = scrolled + "%";
   };
 
-  function getYouTubeEmbedUrl(url) {
+  // Парсинг YouTube ID
+  function getYouTubeID(url) {
     if (!url) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
-    return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
+    return (match && match[2].length === 11) ? match[2] : null;
   }
 
   async function loadFullPost() {
     if (!postId) { window.location.href = '/'; return; }
+
     try {
       const res = await fetch(`/api/content/single/${postId}`);
       const post = await res.json();
-      const ytUrl = getYouTubeEmbedUrl(post.body);
+
+      // Ищем YouTube ID сначала в mediaUrl, потом в body
+      const ytId = getYouTubeID(post.mediaUrl) || getYouTubeID(post.body);
+      const ytEmbedUrl = ytId ? `https://www.youtube.com/embed/${ytId}` : null;
 
       const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
       const isBookmarked = bookmarks.includes(postId);
 
       document.title = `${post.title} | TechPlatform`;
+
+      // Формируем блок медиа
+      let mediaHtml = '';
+      if (ytEmbedUrl) {
+        mediaHtml = `<div class="full-media"><iframe src="${ytEmbedUrl}" allowfullscreen></iframe></div>`;
+      } else if (post.mediaUrl) {
+        mediaHtml = post.type === 'video'
+                ? `<div class="full-media"><video src="${post.mediaUrl}" controls></video></div>`
+                : `<div class="full-media"><img src="${post.mediaUrl}"></div>`;
+      }
+
+      // Если в body лежит только ссылка на YouTube, не дублируем её текстом
+      const cleanBody = (ytId && post.body && post.body.includes(ytId)) ? (post.preview || '') : post.body;
+
       document.getElementById('post-view').innerHTML = `
         <div class="post-header">
           <div>
-            <div class="meta-info">${post.category || 'Общее'} • ${new Date(post.createdAt).toLocaleDateString()}</div>
-            <h1 style="margin: 0; font-size: 34px; letter-spacing: -0.5px;">${post.title}</h1>
+            <div class="meta-info">${post.category || 'Технологии'} • ${new Date(post.createdAt).toLocaleDateString()}</div>
+            <h1 style="margin: 0; font-size: 32px; letter-spacing: -0.8px; line-height: 1.1;">${post.title}</h1>
           </div>
           <button onclick="toggleBookmark('${post._id}')" class="bookmark-btn ${isBookmarked ? 'active' : ''}" id="book-btn">
             ${isBookmarked ? '🔖' : '📑'}
           </button>
         </div>
 
-        <div class="full-media">
-          ${post.mediaUrl
-              ? (post.type === 'video' ? `<video src="${post.mediaUrl}" controls></video>` : `<img src="${post.mediaUrl}">`)
-              : (ytUrl ? `<iframe src="${ytUrl}" allowfullscreen></iframe>` : '')
-      }
-        </div>
+        ${mediaHtml}
 
         <div class="post-body">
-          ${!ytUrl && post.body ? post.body : (post.preview || 'Нет текста')}
+          ${cleanBody || post.preview || 'Текст публикации в процессе обновления...'}
         </div>
 
-        <div style="margin-bottom: 30px;">
+        <div style="margin-bottom: 35px;">
           ${(post.tags || []).map(t => `<span class="interest-tag">#${t}</span>`).join('')}
         </div>
 
-        <div style="font-size: 14px; color: #86868b; display: flex; align-items: center; gap: 10px;">
-          <img src="${post.authorId?.avatarUrl || 'https://via.placeholder.com/30'}" style="width:30px; height:30px; border-radius:50%;">
-          <span>Автор: <strong>${post.authorId?.username || 'Tech Expert'}</strong></span>
+        <div style="background: #f5f5f7; padding: 20px; border-radius: 20px; display: flex; align-items: center; gap: 15px;">
+          <img src="${post.authorId?.avatarUrl || 'https://api.dicebear.com/7.x/big-ears/svg?seed=Tech'}" style="width:45px; height:45px; border-radius:50%; background: #fff;">
+          <div>
+            <div style="font-size: 12px; color: #86868b;">Автор публикации</div>
+            <strong style="font-size: 16px;">${post.authorId?.username || 'Tech Expert'}</strong>
+          </div>
         </div>
       `;
 
       loadComments();
     } catch (e) {
-      document.getElementById('post-view').innerHTML = "<h2>Публикация не найдена</h2>";
+      document.getElementById('post-view').innerHTML = "<h2 style='text-align:center;'>Публикация не найдена 404</h2>";
     }
   }
 
-  // Логика закладок (через LocalStorage)
   function toggleBookmark(id) {
     let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
     const btn = document.getElementById('book-btn');
@@ -153,7 +177,6 @@
       btn.classList.add('active');
       btn.innerText = '🔖';
     }
-
     localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
   }
 
@@ -167,8 +190,8 @@
       const comments = await res.json();
       countSpan.innerText = comments.length;
 
-      if (comments.length === 0) {
-        list.innerHTML = "<p style='color: #888;'>Здесь пока пусто. Оставьте первый комментарий!</p>";
+      if (!comments.length) {
+        list.innerHTML = "<p style='color: #888; text-align: center; padding: 20px 0;'>Пока никто не оставил мнение. Будьте первыми!</p>";
         return;
       }
 
@@ -176,39 +199,46 @@
         const isMyComment = currentUserId && (c.authorId?._id === currentUserId || c.authorId === currentUserId);
         return `
           <div class="comment-item" id="comment-${c._id}">
-            <img src="${c.authorId?.avatarUrl || 'https://via.placeholder.com/40'}" class="comment-avatar">
+            <img src="${c.authorId?.avatarUrl || 'https://api.dicebear.com/7.x/big-ears/svg?seed=User'}" class="comment-avatar">
             <div class="comment-bubble">
-              <div style="display: flex; justify-content: space-between;">
-                <strong>${c.authorId?.username || 'Пользователь'}</strong>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong>${c.authorId?.username || 'Инноватор'}</strong>
                 ${isMyComment ? `<span class="delete-btn" onclick="deleteComment('${c._id}')">🗑️</span>` : ''}
               </div>
-              <div style="margin-top: 5px;">${c.text}</div>
+              <div style="margin-top: 6px; color: #3a3a3c;">${c.text}</div>
             </div>
           </div>
         `;
       }).join('');
-    } catch (e) { list.innerHTML = "Ошибка загрузки"; }
+    } catch (e) { list.innerHTML = "Ошибка загрузки обсуждения"; }
   }
 
   async function addComment() {
     const input = document.getElementById('new-comment-text');
-    if (!input.value.trim() || !currentUser) return;
+    if (!input.value.trim() || !currentUser) {
+      if(!currentUser) alert("Войдите, чтобы комментировать");
+      return;
+    }
     try {
       const res = await fetch('/api/comments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId, userId: currentUser.id || currentUser._id, text: input.value.trim() })
+        body: JSON.stringify({
+          postId,
+          userId: currentUser.id || currentUser._id,
+          text: input.value.trim()
+        })
       });
       if (res.ok) { input.value = ''; loadComments(); }
     } catch (e) { console.error(e); }
   }
 
   async function deleteComment(commentId) {
-    if (!confirm("Удалить?")) return;
+    if (!confirm("Удалить этот комментарий?")) return;
     try {
       const res = await fetch(`/api/comments/${commentId}`, { method: 'DELETE' });
       if (res.ok) loadComments();
-    } catch (e) { alert("Ошибка удаления"); }
+    } catch (e) { alert("Ошибка при удалении"); }
   }
 
   document.getElementById('new-comment-text').addEventListener('keypress', (e) => { if (e.key === 'Enter') addComment(); });
