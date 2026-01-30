@@ -18,7 +18,6 @@
       transition: 0.2s; cursor: pointer; text-decoration: none; color: inherit;
     }
     .notif-item:hover { background: #f9f9fb; transform: translateX(5px); }
-    /* Стиль для непрочитанных (можно добавить логику в бэкенд позже) */
     .notif-item.unread { border-left: 4px solid var(--primary); background: #f0f7ff; }
 
     .notif-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; background: #eee; border: 1px solid #eee; }
@@ -28,7 +27,7 @@
 
     .empty-state { text-align: center; padding: 50px 0; color: #86868b; font-size: 16px; }
     .back-link { text-decoration: none; color: var(--primary); font-weight: 600; font-size: 14px; display: inline-block; margin-bottom: 10px; }
-    .error-msg { text-align: center; color: #ff3b30; padding: 20px; }
+    .error-msg { text-align: center; color: #ff3b30; padding: 20px; font-size: 14px; line-height: 1.5; }
   </style>
 </head>
 <body>
@@ -38,48 +37,56 @@
   <h1>Уведомления <span id="unread-dot" style="display:none; width:10px; height:10px; background:var(--primary); border-radius:50%;"></span></h1>
 
   <div id="notif-list" class="notif-list">
-    <p style="text-align: center; color: #888;">Синхронизация с сервером...</p>
+    <p style="text-align: center; color: #888;">Загрузка инноваций...</p>
   </div>
 </div>
 
 <script>
-  // Синхронизируем получение ID пользователя
-  const userData = localStorage.getItem('user');
-  const user = userData ? JSON.parse(userData) : null;
-  const userId = user?.id || user?._id;
-
   async function loadNotifications() {
     const list = document.getElementById('notif-list');
 
-    if (!userId) {
+    // 1. ПРОВЕРКА ЛОКАЛЬНЫХ ДАННЫХ
+    const userData = localStorage.getItem('user');
+    if (!userData) {
       list.innerHTML = `<div class="empty-state">Войдите в систему, чтобы видеть уведомления 🔐</div>`;
       return;
     }
 
+    const user = JSON.parse(userData);
+    const userId = user?.id || user?._id;
+
+    if (!userId || userId === "undefined") {
+      list.innerHTML = `<div class="error-msg">⚠️ Ошибка: ID пользователя не найден. Попробуйте перезайти в аккаунт.</div>`;
+      return;
+    }
+
     try {
-      // Запрос к нашему исправленному API в server.js
+      // 2. ЗАПРОС К СЕРВЕРУ
       const res = await fetch(`/api/notifications/${userId}`);
 
-      if (!res.ok) throw new Error('Ошибка при получении данных');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `Ошибка сервера (${res.status})`);
+      }
 
       const data = await res.json();
 
+      // 3. ОБРАБОТКА ПУСТОГО СПИСКА
       if (!data || data.length === 0) {
         list.innerHTML = `<div class="empty-state">Пока здесь тишина... 🤫</div>`;
         return;
       }
 
-
-
+      // 4. ОТРИСОВКА
       list.innerHTML = data.map(n => {
-        // На бэкенде мы используем fromUserId и contentId
+        // Защита от отсутствующих данных (если юзер удален)
         const sender = n.fromUserId || { username: 'Пользователь', avatarUrl: '' };
         const actionText = n.type === 'like' ? 'поставил(а) ❤️ вашему посту' : 'прокомментировал(а) ваш пост 💬';
 
-        // Ссылка на аватарку (проверяем, есть ли она)
+        // Формируем путь к аватару
         const avatar = sender.avatarUrl || `https://api.dicebear.com/7.x/big-ears/svg?seed=${sender.username}`;
 
-        // Ссылка на пост (если есть)
+        // Ссылка на конкретный пост
         const postLink = n.contentId ? `/post.html?id=${n.contentId}` : '#';
 
         return `
@@ -94,12 +101,16 @@
       }).join('');
 
     } catch (e) {
-      console.error(e);
-      list.innerHTML = `<div class="error-msg">⚠️ Ошибка загрузки уведомлений. Проверьте соединение с сервером.</div>`;
+      console.error("Notification Load Error:", e);
+      list.innerHTML = `
+        <div class="error-msg">
+          ⚠️ Ошибка загрузки уведомлений<br>
+          <small>${e.message}</small><br>
+          <button onclick="loadNotifications()" style="margin-top:10px; border:none; background:none; color:var(--primary); cursor:pointer; font-weight:600;">Повторить попытку</button>
+        </div>`;
     }
   }
 
-  // Запускаем загрузку
   loadNotifications();
 </script>
 </body>

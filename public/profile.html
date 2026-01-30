@@ -24,13 +24,18 @@
     .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
 
     .posts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
-    .post-item { background: #fff; border: 1px solid #f0f0f0; border-radius: 18px; overflow: hidden; transition: 0.3s; display: flex; flex-direction: column; }
+    .post-item { background: #fff; border: 1px solid #f0f0f0; border-radius: 18px; overflow: hidden; transition: 0.3s; display: flex; flex-direction: column; position: relative; }
     .post-item:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
 
     .post-preview { width: 100%; height: 150px; background: #000; overflow: hidden; position: relative; cursor: pointer; }
     .post-preview img { width: 100%; height: 100%; object-fit: cover; }
-    .post-content { padding: 15px; flex-grow: 1; }
-    .post-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; line-height: 1.4; height: 42px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .post-content { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; }
+    .post-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; line-height: 1.4; height: 42px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; cursor: pointer; }
+
+    /* СТИЛИ ДЛЯ КНОПКИ УДАЛЕНИЯ */
+    .post-actions { margin-top: auto; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .btn-delete-post { background: none; border: none; color: var(--red); font-size: 13px; font-weight: 600; cursor: pointer; padding: 5px 10px; border-radius: 8px; transition: 0.2s; }
+    .btn-delete-post:hover { background: rgba(255, 59, 48, 0.1); }
 
     .interests-container { background: #fafafa; padding: 25px; border-radius: 20px; border: 1px solid #eee; }
     .interests-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin: 20px 0; }
@@ -167,12 +172,13 @@
 
   async function loadMyPosts() {
     const list = document.getElementById('my-posts-list');
+    const userId = currentUser.id || currentUser._id;
     try {
-      const res = await fetch(`/api/content?authorId=${currentUser.id || currentUser._id}`);
+      // Используем новый роут для получения постов конкретного юзера
+      const res = await fetch(`/api/content/user/${userId}`);
       const posts = await res.json();
-      const myPosts = posts.filter(p => p.authorId?._id === (currentUser.id || currentUser._id));
-      document.getElementById('post-count').innerText = `(${myPosts.length})`;
-      list.innerHTML = myPosts.map(p => renderPostCard(p)).join('');
+      document.getElementById('post-count').innerText = `(${posts.length})`;
+      list.innerHTML = posts.map(p => renderPostCard(p, true)).join('');
     } catch (e) { list.innerHTML = "Ошибка загрузки"; }
   }
 
@@ -185,34 +191,56 @@
     }
     const promises = bookmarkIds.map(id => fetch(`/api/content/single/${id}`).then(r => r.json()));
     const posts = await Promise.all(promises);
-    list.innerHTML = posts.filter(p => p && !p.error).map(p => renderPostCard(p)).join('');
+    list.innerHTML = posts.filter(p => p && !p.error).map(p => renderPostCard(p, false)).join('');
   }
 
   async function loadLikedPosts() {
     const list = document.getElementById('liked-posts-list');
     const userId = currentUser.id || currentUser._id;
     try {
-      const res = await fetch(`/api/content`);
-      const allPosts = await res.json();
-      const liked = allPosts.filter(p => p.likedBy && p.likedBy.includes(userId));
-      list.innerHTML = liked.length ? liked.map(p => renderPostCard(p)).join('') : "<p style='grid-column:1/-1; text-align:center; color:#86868b; padding:40px;'>Нет лайков ❤️</p>";
+      const res = await fetch(`/api/content/liked/${userId}`);
+      const liked = await res.json();
+      list.innerHTML = liked.length ? liked.map(p => renderPostCard(p, false)).join('') : "<p style='grid-column:1/-1; text-align:center; color:#86868b; padding:40px;'>Нет лайков ❤️</p>";
     } catch (e) { list.innerHTML = "Ошибка загрузки"; }
   }
 
-  function renderPostCard(post) {
+  // Функция удаления поста
+  async function deletePost(postId) {
+    if (!confirm('Удалить эту публикацию навсегда? 🗑️')) return;
+
+    try {
+      const res = await fetch(`/api/content/${postId}`, { method: 'DELETE' });
+      if (res.ok) {
+        // Удаляем элемент из DOM с анимацией
+        const el = document.getElementById(`post-${postId}`);
+        el.style.opacity = '0';
+        el.style.transform = 'scale(0.8)';
+        setTimeout(() => loadMyPosts(), 300); // Перезагружаем список
+      } else {
+        alert("Ошибка при удалении");
+      }
+    } catch (e) {
+      alert("Ошибка сети");
+    }
+  }
+
+  function renderPostCard(post, isOwnPost) {
     const ytId = getYouTubeID(post.mediaUrl) || getYouTubeID(post.body);
     const thumb = post.mediaUrl && post.type !== 'video' && !ytId
             ? post.mediaUrl
             : (ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : '');
 
     return `
-      <div class="post-item">
+      <div class="post-item" id="post-${post._id}">
         <div class="post-preview" onclick="location.href='/post.html?id=${post._id}'">
-          ${thumb ? `<img src="${thumb}">` : `<div style="padding:20px; color:white; font-size:12px; display:flex; align-items:center; height:100%; text-align:center;">${post.title}</div>`}
+          ${thumb ? `<img src="${thumb}">` : `<div style="padding:20px; color:white; font-size:12px; display:flex; align-items:center; height:100%; text-align:center; background:#1d1d1f;">${post.title}</div>`}
         </div>
         <div class="post-content">
           <div class="post-title" onclick="location.href='/post.html?id=${post._id}'">${post.title}</div>
-          <div style="font-size:13px; color:#86868b;">❤️ ${post.likes}  💬 ${post.stats?.commentsCount || 0}</div>
+          <div class="post-actions">
+             <div style="font-size:13px; color:#86868b;">❤️ ${post.likes}  💬 ${post.stats?.commentsCount || 0}</div>
+             ${isOwnPost ? `<button class="btn-delete-post" onclick="deletePost('${post._id}')">Удалить</button>` : ''}
+          </div>
         </div>
       </div>
     `;
@@ -228,8 +256,8 @@
       body: JSON.stringify({ userId: currentUser.id || currentUser._id, interests: selected })
     });
     if(res.ok) {
-      currentUser.interests = selected;
-      localStorage.setItem('user', JSON.stringify(currentUser));
+      const data = await res.json();
+      localStorage.setItem('user', JSON.stringify(data.user));
       alert("Интересы обновлены! ✨");
       location.reload();
     }
@@ -265,18 +293,24 @@
     if(!croppedBlob) return alert("Обрежьте фото");
     const fd = new FormData();
     fd.append('avatar', croppedBlob);
-    fd.append('userId', currentUser.id || currentUser._id);
+
+    // Передаем ID через заголовок для стабильности
+    const userId = currentUser.id || currentUser._id;
     const btn = document.getElementById('save-avatar-btn');
     btn.innerText = "Загрузка...";
+
     try {
-      const res = await fetch('/api/users/upload-avatar', { method: 'POST', body: fd });
+      const res = await fetch('/api/users/upload-avatar', {
+        method: 'POST',
+        headers: { 'x-author-id': userId },
+        body: fd
+      });
       if(res.ok) {
         const data = await res.json();
-        currentUser.avatarUrl = data.user.avatarUrl;
-        localStorage.setItem('user', JSON.stringify(currentUser));
+        localStorage.setItem('user', JSON.stringify(data.user));
         location.reload();
       }
-    } catch (e) { alert("Ошибка"); }
+    } catch (e) { alert("Ошибка сервера"); }
   }
 
   init();

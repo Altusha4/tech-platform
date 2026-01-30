@@ -71,3 +71,24 @@ h1 {
     display: block;
     width: 100%;
 }
+.btn-delete {
+    background: #fff;
+    color: #ff3b30; /* Apple Red */
+    border: 1px solid #ff3b30;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+    margin-left: 10px;
+}
+
+.btn-delete:hover {
+    background: #ff3b30;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(255, 59, 48, 0.2);
+}
+
+.post-card {
+    transition: all 0.3s ease;
+}

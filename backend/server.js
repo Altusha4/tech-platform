@@ -17,7 +17,6 @@ const app = express();
 const publicPath = path.join(__dirname, '..', 'public');
 
 // --- НАСТРОЙКА CORS И ПАРСЕРОВ ---
-// Разрешаем x-author-id в заголовках, иначе браузер заблокирует запрос
 app.use(cors({
     origin: '*',
     allowedHeaders: ['Content-Type', 'x-author-id']
@@ -68,7 +67,7 @@ const deleteLocalFile = (relativeUrl) => {
     }
 };
 
-// --- 1. ЗАГРУЗКА АВАТАРКИ ---
+// --- 1. ПОЛЬЗОВАТЕЛИ (Аватар и Профиль) ---
 app.post('/api/users/upload-avatar', uploadAvatar.single('avatar'), async (req, res) => {
     try {
         const userId = req.headers['x-author-id'] || req.body.userId;
@@ -83,13 +82,24 @@ app.post('/api/users/upload-avatar', uploadAvatar.single('avatar'), async (req, 
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.put('/api/users/update', async (req, res) => {
+    try {
+        const { userId, interests } = req.body;
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { interests },
+            { new: true }
+        ).select('-passwordHash');
+        res.json({ message: "Профиль обновлен!", user: updatedUser });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // --- 2. КОНТЕНТ (CRUD) ---
 app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => {
     try {
         const authorId = req.headers['x-author-id'] || req.body.userId;
-
         if (!authorId || authorId === 'undefined') {
-            return res.status(400).json({ error: "authorId обязателен (не найден в заголовках x-author-id)" });
+            return res.status(400).json({ error: "authorId обязателен" });
         }
 
         const { title, preview, body, category, tags, type, imageBase64 } = req.body;
@@ -105,23 +115,17 @@ app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => 
         const newPost = new Content({
             type: finalType,
             title: title ? title.trim() : "Без названия",
-            preview,
-            body,
-            mediaUrl,
+            preview, body, mediaUrl,
             category: category || 'Other',
             tags: tags ? (Array.isArray(tags) ? tags : JSON.parse(tags)) : [],
             authorId: authorId,
-            likes: 0,
-            likedBy: [],
+            likes: 0, likedBy: [],
             stats: { views: 0, commentsCount: 0 }
         });
 
         const savedPost = await newPost.save();
         res.status(201).json(savedPost);
-    } catch (err) {
-        console.error("Ошибка создания поста:", err);
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/content/single/:id', async (req, res) => {
@@ -140,17 +144,19 @@ app.delete('/api/content/:id', async (req, res) => {
             if (post.mediaUrl && !post.mediaUrl.startsWith('data:')) deleteLocalFile(post.mediaUrl);
             await Content.findByIdAndDelete(req.params.id);
             await Comment.deleteMany({ postId: req.params.id });
+            await Notification.deleteMany({ contentId: req.params.id });
         }
         res.json({ message: "Удалено" });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- 3. ЛЕНТА И ЛАЙКИ ---
+// --- 3. ЛЕНТА, ФИЛЬТРЫ И ПРОФИЛЬ ---
 app.get('/api/content', async (req, res) => {
     try {
-        const { userId, category } = req.query;
+        const { userId, category, authorId } = req.query;
         let query = {};
         if (category && category !== 'All') query.category = category;
+        if (authorId) query.authorId = authorId;
 
         let posts = await Content.find(query)
             .populate('authorId', 'username avatarUrl')
@@ -174,6 +180,23 @@ app.get('/api/content', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.get('/api/content/user/:userId', async (req, res) => {
+    try {
+        const posts = await Content.find({ authorId: req.params.userId }).sort({ createdAt: -1 });
+        res.json(posts);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/content/liked/:userId', async (req, res) => {
+    try {
+        const posts = await Content.find({ likedBy: req.params.userId })
+            .populate('authorId', 'username avatarUrl')
+            .sort({ createdAt: -1 });
+        res.json(posts);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- 4. ЛАЙКИ И УВЕДОМЛЕНИЯ ---
 app.post('/api/content/:id/like', async (req, res) => {
     try {
         const { userId } = req.body;
@@ -189,9 +212,7 @@ app.post('/api/content/:id/like', async (req, res) => {
             post.likes += 1;
             if (post.authorId.toString() !== userId.toString()) {
                 await Notification.create({
-                    userId: post.authorId,
-                    fromUserId: userId,
-                    type: 'like',
+                    userId: post.authorId, fromUserId: userId, type: 'like',
                     message: `поставил(а) лайк вашему посту: "${post.title}"`,
                     contentId: post._id
                 });
@@ -202,14 +223,9 @@ app.post('/api/content/:id/like', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- 4. УВЕДОМЛЕНИЯ (ДОБАВЛЕННЫЙ РОУТ) ---
 app.get('/api/notifications/:userId', async (req, res) => {
     try {
-        const { userId } = req.params;
-        if (!mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(400).json({ error: "Некорректный ID пользователя" });
-        }
-        const notes = await Notification.find({ userId: userId })
+        const notes = await Notification.find({ userId: req.params.userId })
             .populate('fromUserId', 'username avatarUrl')
             .sort({ createdAt: -1 });
         res.json(notes);
@@ -234,14 +250,11 @@ app.post('/api/comments', async (req, res) => {
 
         if (post && post.authorId.toString() !== userId.toString()) {
             await Notification.create({
-                userId: post.authorId,
-                fromUserId: userId,
-                type: 'comment',
+                userId: post.authorId, fromUserId: userId, type: 'comment',
                 message: `прокомментировал(а) ваш пост: "${post.title}"`,
                 contentId: post._id
             });
         }
-
         const populatedComment = await newComment.populate('authorId', 'username avatarUrl');
         res.status(201).json(populatedComment);
     } catch (err) { res.status(500).json({ error: err.message }); }
