@@ -32,7 +32,6 @@
     .post-content { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; }
     .post-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; line-height: 1.4; height: 42px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; cursor: pointer; }
 
-    /* СТИЛИ ДЛЯ КНОПКИ УДАЛЕНИЯ */
     .post-actions { margin-top: auto; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; }
     .btn-delete-post { background: none; border: none; color: var(--red); font-size: 13px; font-weight: 600; cursor: pointer; padding: 5px 10px; border-radius: 8px; transition: 0.2s; }
     .btn-delete-post:hover { background: rgba(255, 59, 48, 0.1); }
@@ -96,12 +95,12 @@
         <h3 style="margin-top:0">Настройка вашей ленты</h3>
         <p style="color: #86868b; font-size: 14px; margin-bottom: 20px;">Выберите темы для персональных рекомендаций.</p>
         <div class="interests-grid">
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="programming"><span class="tag-box">💻 Программирование</span></label>
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="design"><span class="tag-box">🎨 Дизайн & UX</span></label>
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="gadgets"><span class="tag-box">📱 Гаджеты / Apple</span></label>
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="mongodb"><span class="tag-box">💾 Базы данных</span></label>
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="node"><span class="tag-box">⚙️ Backend / Node</span></label>
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="future"><span class="tag-box">🚀 Будущее & AI</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="Programming"><span class="tag-box">💻 Programming</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="Design"><span class="tag-box">🎨 Design & UX</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="Gadgets"><span class="tag-box">📱 Gadgets</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="MongoDB"><span class="tag-box">💾 MongoDB</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="Node.js"><span class="tag-box">⚙️ Node.js</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="Future"><span class="tag-box">🚀 Будущее & AI</span></label>
         </div>
         <button onclick="updateInterests()" id="interest-save-btn" class="btn-save-interests">Сохранить предпочтения</button>
       </div>
@@ -148,9 +147,10 @@
 
   function renderData() {
     const avatarCircle = document.getElementById('avatar-circle');
+    const userInitial = currentUser.username ? currentUser.username[0].toUpperCase() : 'U';
     avatarCircle.innerHTML = currentUser.avatarUrl
             ? `<img src="${currentUser.avatarUrl}">`
-            : `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">${currentUser.username[0].toUpperCase()}</div>`;
+            : `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">${userInitial}</div>`;
 
     document.getElementById('display-name').innerText = currentUser.username;
     document.getElementById('display-email').innerText = currentUser.email;
@@ -165,63 +165,68 @@
       document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
       document.getElementById(`content-${t}`).classList.toggle('hidden', t !== tab);
     });
+
+    const userId = currentUser._id || currentUser.id;
     if(tab === 'posts') loadMyPosts();
-    if(tab === 'bookmarks') loadBookmarks();
-    if(tab === 'liked') loadLikedPosts();
+    if(tab === 'bookmarks') loadBookmarks(); // Загружаем из localStorage
+    if(tab === 'liked') loadLikedPosts(userId);
   }
 
   async function loadMyPosts() {
     const list = document.getElementById('my-posts-list');
-    const userId = currentUser.id || currentUser._id;
+    const userId = currentUser._id || currentUser.id;
+    list.innerHTML = "<p style='grid-column:1/-1; text-align:center;'>Загрузка...</p>";
     try {
-      // Используем новый роут для получения постов конкретного юзера
-      const res = await fetch(`/api/content/user/${userId}`);
+      const res = await fetch(`/api/content/my-posts/${userId}`);
       const posts = await res.json();
       document.getElementById('post-count').innerText = `(${posts.length})`;
-      list.innerHTML = posts.map(p => renderPostCard(p, true)).join('');
+      list.innerHTML = posts.length ? posts.map(p => renderPostCard(p, true)).join('') : "<p style='grid-column:1/-1; text-align:center;'>Нет постов</p>";
     } catch (e) { list.innerHTML = "Ошибка загрузки"; }
   }
 
   async function loadBookmarks() {
     const list = document.getElementById('bookmarks-list');
-    const bookmarkIds = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-    if (!bookmarkIds.length) {
+    const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+
+    if (bookmarks.length === 0) {
       list.innerHTML = "<p style='grid-column:1/-1; text-align:center; color:#86868b; padding:40px;'>Нет закладок 📑</p>";
       return;
     }
-    const promises = bookmarkIds.map(id => fetch(`/api/content/single/${id}`).then(r => r.json()));
-    const posts = await Promise.all(promises);
-    list.innerHTML = posts.filter(p => p && !p.error).map(p => renderPostCard(p, false)).join('');
+
+    list.innerHTML = "<p style='grid-column:1/-1; text-align:center;'>Загрузка закладок...</p>";
+
+    try {
+      // Запрашиваем данные по каждому ID из закладок
+      const promises = bookmarks.map(id => fetch(`/api/content/single/${id}`).then(r => r.ok ? r.json() : null));
+      const results = await Promise.all(promises);
+      const posts = results.filter(p => p !== null);
+
+      list.innerHTML = posts.length
+              ? posts.map(p => renderPostCard(p, false)).join('')
+              : "<p style='grid-column:1/-1; text-align:center; color:#86868b; padding:40px;'>Нет доступных закладок</p>";
+    } catch (e) { list.innerHTML = "Ошибка загрузки закладок"; }
   }
 
-  async function loadLikedPosts() {
+  async function loadLikedPosts(userId) {
     const list = document.getElementById('liked-posts-list');
-    const userId = currentUser.id || currentUser._id;
+    list.innerHTML = "<p style='grid-column:1/-1; text-align:center;'>Загрузка...</p>";
     try {
       const res = await fetch(`/api/content/liked/${userId}`);
       const liked = await res.json();
-      list.innerHTML = liked.length ? liked.map(p => renderPostCard(p, false)).join('') : "<p style='grid-column:1/-1; text-align:center; color:#86868b; padding:40px;'>Нет лайков ❤️</p>";
-    } catch (e) { list.innerHTML = "Ошибка загрузки"; }
+      list.innerHTML = liked.length ? liked.map(p => renderPostCard(p, false)).join('') : "<p style='grid-column:1/-1; text-align:center;'>Нет лайков ❤️</p>";
+    } catch (e) { list.innerHTML = "Ошибка загрузки лайков"; }
   }
 
-  // Функция удаления поста
   async function deletePost(postId) {
     if (!confirm('Удалить эту публикацию навсегда? 🗑️')) return;
-
     try {
       const res = await fetch(`/api/content/${postId}`, { method: 'DELETE' });
       if (res.ok) {
-        // Удаляем элемент из DOM с анимацией
-        const el = document.getElementById(`post-${postId}`);
-        el.style.opacity = '0';
-        el.style.transform = 'scale(0.8)';
-        setTimeout(() => loadMyPosts(), 300); // Перезагружаем список
+        loadMyPosts();
       } else {
         alert("Ошибка при удалении");
       }
-    } catch (e) {
-      alert("Ошибка сети");
-    }
+    } catch (e) { alert("Ошибка сети"); }
   }
 
   function renderPostCard(post, isOwnPost) {
@@ -238,7 +243,7 @@
         <div class="post-content">
           <div class="post-title" onclick="location.href='/post.html?id=${post._id}'">${post.title}</div>
           <div class="post-actions">
-             <div style="font-size:13px; color:#86868b;">❤️ ${post.likes}  💬 ${post.stats?.commentsCount || 0}</div>
+             <div style="font-size:13px; color:#86868b;">❤️ ${post.likes || 0}  💬 ${post.stats?.commentsCount || 0}</div>
              ${isOwnPost ? `<button class="btn-delete-post" onclick="deletePost('${post._id}')">Удалить</button>` : ''}
           </div>
         </div>
@@ -249,18 +254,21 @@
   async function updateInterests() {
     const btn = document.getElementById('interest-save-btn');
     const selected = Array.from(document.querySelectorAll('input[name="profile-interest"]:checked')).map(cb => cb.value);
+    const userId = currentUser._id || currentUser.id;
     btn.innerText = "Сохранение...";
-    const res = await fetch('/api/users/update', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: currentUser.id || currentUser._id, interests: selected })
-    });
-    if(res.ok) {
-      const data = await res.json();
-      localStorage.setItem('user', JSON.stringify(data.user));
-      alert("Интересы обновлены! ✨");
-      location.reload();
-    }
+    try {
+      const res = await fetch('/api/users/update', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: userId, interests: selected })
+      });
+      if(res.ok) {
+        const data = await res.json();
+        localStorage.setItem('user', JSON.stringify(data.user));
+        alert("Интересы обновлены! ✨");
+        location.reload();
+      }
+    } catch (e) { alert("Ошибка сохранения"); }
     btn.innerText = "Сохранить предпочтения";
   }
 
@@ -283,22 +291,20 @@
   }
 
   function applyCrop() {
+    if (!cropper) return;
     cropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob(blob => {
       croppedBlob = blob;
-      alert("Фото готово!");
+      alert("Фото готово к сохранению!");
     }, 'image/jpeg');
   }
 
   async function saveAvatarOnly() {
-    if(!croppedBlob) return alert("Обрежьте фото");
+    if(!croppedBlob) return alert("Пожалуйста, сначала выберите и обрежьте фото");
     const fd = new FormData();
     fd.append('avatar', croppedBlob);
-
-    // Передаем ID через заголовок для стабильности
-    const userId = currentUser.id || currentUser._id;
+    const userId = currentUser._id || currentUser.id;
     const btn = document.getElementById('save-avatar-btn');
     btn.innerText = "Загрузка...";
-
     try {
       const res = await fetch('/api/users/upload-avatar', {
         method: 'POST',
@@ -309,8 +315,14 @@
         const data = await res.json();
         localStorage.setItem('user', JSON.stringify(data.user));
         location.reload();
+      } else {
+        alert("Ошибка при загрузке");
+        btn.innerText = "Сохранить аватар";
       }
-    } catch (e) { alert("Ошибка сервера"); }
+    } catch (e) {
+      alert("Ошибка сервера");
+      btn.innerText = "Сохранить аватар";
+    }
   }
 
   init();

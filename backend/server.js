@@ -32,7 +32,7 @@ const storageConfigs = {
     videos: path.join(publicPath, 'uploads', 'videos')
 };
 
-// Создаем папки при запуске
+// Проверка и создание папок
 Object.values(storageConfigs).forEach(dir => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
@@ -53,22 +53,21 @@ const contentStorage = multer.diskStorage({
 const uploadAvatar = multer({ storage: avatarStorage });
 const uploadContent = multer({ storage: contentStorage });
 
-// --- ПОРЯДОК: СНАЧАЛА API, ПОТОМ СТАТИКА ---
+// --- СТАТИКА И API АВТОРИЗАЦИИ ---
 app.use('/api/auth', authRoutes);
 app.use('/uploads', express.static(path.join(publicPath, 'uploads')));
 
-// Вспомогательная функция для удаления файлов
 const deleteLocalFile = (relativeUrl) => {
     if (!relativeUrl || relativeUrl.startsWith('data:')) return;
     const absolutePath = path.join(publicPath, relativeUrl);
     if (fs.existsSync(absolutePath)) {
         fs.unlink(absolutePath, (err) => {
-            if (err) console.error("Ошибка при удалении файла:", err);
+            if (err) console.error("Ошибка удаления файла:", err);
         });
     }
 };
 
-// --- 1. ПОЛЬЗОВАТЕЛИ (Профиль и Мини-профиль) ---
+// --- 1. ПОЛЬЗОВАТЕЛИ ---
 
 app.post('/api/users/upload-avatar', uploadAvatar.single('avatar'), async (req, res) => {
     try {
@@ -93,17 +92,24 @@ app.put('/api/users/update', async (req, res) => {
 app.get('/api/users/mini-profile/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(userId)) return res.status(400).json({ error: "Invalid ID" });
         const user = await User.findById(userId).select('username avatarUrl interests');
-        if (!user) return res.status(404).json({ error: "Пользователь не найден" });
-        const [followersCount, postsCount] = await Promise.all([
+        if (!user) return res.status(404).json({ error: "User not found" });
+        const [followers, posts] = await Promise.all([
             Follow.countDocuments({ following: userId }),
             Content.countDocuments({ authorId: userId })
         ]);
-        res.json({ ...user._doc, followersCount, postsCount });
+        res.json({
+            username: user.username,
+            avatarUrl: user.avatarUrl,
+            interests: user.interests,
+            followersCount: followers,
+            postsCount: posts
+        });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- 2. КОНТЕНТ (CRUD + РЕДАКТИРОВАНИЕ) ---
+// --- 2. КОНТЕНТ (CRUD) ---
 
 app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => {
     try {
@@ -117,23 +123,25 @@ app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => 
             finalType = req.file.mimetype.startsWith('image/') ? 'image' : 'video';
         }
         const newPost = new Content({
-            type: finalType, title: title?.trim() || "Без названия", preview, body, mediaUrl, category: category || 'Other',
+            type: finalType, title: title?.trim() || "Без названия", preview, body, mediaUrl,
+            category: category || 'Other',
             tags: tags ? (Array.isArray(tags) ? tags : JSON.parse(tags)) : [],
             authorId, likes: 0, likedBy: [], stats: { views: 0, commentsCount: 0 }
         });
-        res.status(201).json(await newPost.save());
+        await newPost.save();
+        res.status(201).json(newPost);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/content/:id', async (req, res) => {
+app.get('/api/content/single/:id', async (req, res) => {
     try {
-        const { title, body, preview, category, tags } = req.body;
-        const updatedPost = await Content.findByIdAndUpdate(
-            req.params.id,
-            { title: title?.trim(), body, preview, category, tags: Array.isArray(tags) ? tags : JSON.parse(tags || "[]") },
-            { new: true }
-        );
-        res.json(updatedPost);
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ error: "Неверный формат ID" });
+
+        const post = await Content.findById(id).populate('authorId', 'username avatarUrl');
+        if (!post) return res.status(404).json({ error: "Публикация не найдена" });
+
+        res.json(post);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -152,31 +160,56 @@ app.delete('/api/content/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- 3. ЛЕНТЫ И ФИЛЬТРЫ ---
+// --- 3. ЛЕНТЫ ---
+
+const populateStats = async (posts) => {
+    return await Promise.all(posts.map(async (p) => {
+        const count = await Comment.countDocuments({ postId: p._id });
+        return { ...p, stats: { ...p.stats, commentsCount: count } };
+    }));
+};
 
 app.get('/api/content', async (req, res) => {
     try {
-        const { userId, category, authorId } = req.query;
+        const { category, authorId } = req.query;
         let query = {};
-        if (category && category !== 'All') query.category = category;
         if (authorId) query.authorId = authorId;
+        if (category && category !== 'All') query.category = category;
 
         let posts = await Content.find(query).populate('authorId', 'username avatarUrl').sort({ createdAt: -1 }).lean();
-
-        // Синхронизируем счетчик комментариев
-        posts = await Promise.all(posts.map(async (post) => {
-            const realCount = await Comment.countDocuments({ postId: post._id });
-            return { ...post, stats: { ...post.stats, commentsCount: realCount } };
-        }));
-
-        res.json(posts);
+        res.json(await populateStats(posts));
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.get('/api/content/single/:id', async (req, res) => {
+app.get('/api/content/following/:userId', async (req, res) => {
     try {
-        const post = await Content.findById(req.params.id).populate('authorId', 'username avatarUrl');
-        res.json(post);
+        const { userId } = req.params;
+        const followingData = await Follow.find({ follower: userId });
+        const followingIds = followingData.map(f => f.following);
+        if (!followingIds.length) return res.json([]);
+        let posts = await Content.find({ authorId: { $in: followingIds } }).populate('authorId', 'username avatarUrl').sort({ createdAt: -1 }).lean();
+        res.json(await populateStats(posts));
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/content/my-posts/:userId', async (req, res) => {
+    try {
+        let posts = await Content.find({ authorId: req.params.userId }).populate('authorId', 'username avatarUrl').sort({ createdAt: -1 }).lean();
+        res.json(await populateStats(posts));
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/content/liked/:userId', async (req, res) => {
+    try {
+        let posts = await Content.find({ likedBy: req.params.userId }).populate('authorId', 'username avatarUrl').sort({ createdAt: -1 }).lean();
+        res.json(await populateStats(posts));
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/content/bookmarks/:userId', async (req, res) => {
+    try {
+        let posts = await Content.find({ bookmarkedBy: req.params.userId }).populate('authorId', 'username avatarUrl').sort({ createdAt: -1 }).lean();
+        res.json(await populateStats(posts));
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -185,29 +218,40 @@ app.get('/api/content/single/:id', async (req, res) => {
 app.post('/api/follow', async (req, res) => {
     try {
         const { followerId, followingId } = req.body;
-        if (followerId === followingId) return res.status(400).json({ error: "Нельзя подписаться на себя" });
+        if (followerId === followingId) return res.status(400).json({ error: "Self-follow not allowed" });
         const existing = await Follow.findOne({ follower: followerId, following: followingId });
         if (existing) {
             await Follow.deleteOne({ _id: existing._id });
             res.json({ following: false });
         } else {
             await Follow.create({ follower: followerId, following: followingId });
-            await Notification.create({ userId: followingId, fromUserId: followerId, type: 'follow', message: 'подписался(ась) на вас 👤' });
+            // ИСПРАВЛЕНО: recipient и sender
+            await Notification.create({
+                recipient: followingId,
+                sender: followerId,
+                type: 'follow',
+                message: 'подписался(ась) на вас 👤'
+            });
             res.json({ following: true });
         }
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- 5. ЛАЙКИ И КОММЕНТАРИИ (С ПОДДЕРЖКОЙ УДАЛЕНИЯ) ---
+app.get('/api/follow/status', async (req, res) => {
+    try {
+        const exists = await Follow.findOne({ follower: req.query.followerId, following: req.query.followingId });
+        res.json({ following: !!exists });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- 5. ЛАЙКИ И КОММЕНТАРИИ ---
 
 app.post('/api/content/:id/like', async (req, res) => {
     try {
         const { userId } = req.body;
         const post = await Content.findById(req.params.id);
-        if (!post) return res.status(404).json({ error: "Пост не найден" });
-
+        if (!post) return res.status(404).json({ error: "Post not found" });
         const isLiked = post.likedBy.map(id => id.toString()).includes(userId.toString());
-
         if (isLiked) {
             post.likedBy = post.likedBy.filter(id => id.toString() !== userId.toString());
             post.likes = Math.max(0, post.likes - 1);
@@ -215,7 +259,14 @@ app.post('/api/content/:id/like', async (req, res) => {
             post.likedBy.push(userId);
             post.likes += 1;
             if (post.authorId.toString() !== userId.toString()) {
-                await Notification.create({ userId: post.authorId, fromUserId: userId, type: 'like', message: `лайкнул(а) ваш пост`, contentId: post._id });
+                // ИСПРАВЛЕНО: recipient и sender
+                await Notification.create({
+                    recipient: post.authorId,
+                    sender: userId,
+                    type: 'like',
+                    message: `лайкнул(а) ваш пост`,
+                    contentId: post._id
+                });
             }
         }
         await post.save();
@@ -226,15 +277,41 @@ app.post('/api/content/:id/like', async (req, res) => {
 app.post('/api/comments', async (req, res) => {
     try {
         const { postId, userId, text } = req.body;
-        const newComment = await Comment.create({ postId, authorId: userId, text });
-        await Content.findByIdAndUpdate(postId, { $inc: { 'stats.commentsCount': 1 } });
 
-        if (post && post.authorId.toString() !== userId.toString()) {
-            await Notification.create({ userId: post.authorId, fromUserId: userId, type: 'comment', message: `прокомментировал(а) ваш пост`, contentId: post._id });
+        if (!postId || !userId || !text) {
+            return res.status(400).json({ error: "Не все поля заполнены" });
         }
 
-        const populated = await newComment.populate('authorId', 'username avatarUrl');
+        const comment = await Comment.create({ postId, authorId: userId, text });
+        const post = await Content.findByIdAndUpdate(postId, { $inc: { 'stats.commentsCount': 1 } });
+
+        if (post && post.authorId.toString() !== userId.toString()) {
+            // ИСПРАВЛЕНО: recipient и sender
+            await Notification.create({
+                recipient: post.authorId,
+                sender: userId,
+                type: 'comment',
+                message: `прокомментировал(а) ваш пост`,
+                contentId: post._id
+            });
+        }
+
+        const populated = await comment.populate('authorId', 'username avatarUrl');
         res.status(201).json(populated);
+    } catch (err) {
+        console.error("Ошибка при создании комментария:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/comments/:id', async (req, res) => {
+    try {
+        const comment = await Comment.findById(req.params.id);
+        if (!comment) return res.status(404).json({ error: "Comment not found" });
+
+        await Content.findByIdAndUpdate(comment.postId, { $inc: { 'stats.commentsCount': -1 } });
+        await Comment.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -245,33 +322,20 @@ app.get('/api/comments/:postId', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// УДАЛЕНИЕ КОММЕНТАРИЯ (ВАЖНО!)
-app.delete('/api/comments/:id', async (req, res) => {
-    try {
-        const comment = await Comment.findById(req.params.id);
-        if (!comment) return res.status(404).json({ error: "Не найден" });
-
-        await Content.findByIdAndUpdate(comment.postId, { $inc: { 'stats.commentsCount': -1 } });
-        await Comment.findByIdAndDelete(req.params.id);
-
-        res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
 app.get('/api/notifications/:userId', async (req, res) => {
     try {
-        const notes = await Notification.find({ userId: req.params.userId }).populate('fromUserId', 'username avatarUrl').sort({ createdAt: -1 });
+        // ИСПРАВЛЕНО: поиск по recipient и заселение sender
+        const notes = await Notification.find({ recipient: req.params.userId })
+            .populate('sender', 'username avatarUrl')
+            .sort({ createdAt: -1 });
         res.json(notes);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// СТАТИКА В САМОМ НИЗУ
 app.use(express.static(publicPath));
 
-// --- ЗАПУСК СЕРВЕРА ---
 mongoose.connect(process.env.MONGO_URI)
     .then(() => {
-        const PORT = process.env.PORT || 3000;
-        app.listen(PORT, () => console.log(`📡 Server running at http://localhost:${PORT}`));
+        app.listen(3000, () => console.log(`📡 Server running at http://localhost:3000`));
     })
-    .catch(err => console.error("❌ MongoDB Connection Error:", err));
+    .catch(err => console.error("Database error:", err));

@@ -6,7 +6,7 @@
   <title>Просмотр публикации | TechPlatform</title>
   <style>
     :root { --primary: #0071e3; --bg: #f5f5f7; --red: #ff3b30; --card-shadow: 0 4px 25px rgba(0,0,0,0.05); }
-    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #1d1d1f; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #1d1d1f; overflow-y: scroll; }
 
     /* Прогресс-бар чтения */
     #progress-container { position: fixed; top: 0; left: 0; width: 100%; height: 4px; background: rgba(255,255,255,0.2); z-index: 2000; }
@@ -89,12 +89,12 @@
   const postId = urlParams.get('id');
   const currentUser = JSON.parse(localStorage.getItem('user'));
 
-  // Прогресс чтения
   window.onscroll = () => {
     const winScroll = document.documentElement.scrollTop;
     const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
     const scrolled = height > 0 ? (winScroll / height) * 100 : 0;
-    document.getElementById("progress-bar").style.width = scrolled + "%";
+    const progressBar = document.getElementById("progress-bar");
+    if (progressBar) progressBar.style.width = scrolled + "%";
   };
 
   function getYouTubeID(url) {
@@ -105,13 +105,17 @@
   }
 
   async function loadFullPost() {
-    if (!postId) { window.location.href = '/'; return; }
+    if (!postId || postId === 'null') {
+      document.getElementById('post-view').innerHTML = "<h2>Ошибка: Публикация не указана</h2>";
+      document.getElementById('main-container').classList.add('loaded');
+      return;
+    }
 
     try {
       const res = await fetch(`/api/content/single/${postId}`);
       if (!res.ok) throw new Error("404");
-      const post = await res.json();
 
+      const post = await res.json();
       const ytId = getYouTubeID(post.mediaUrl) || getYouTubeID(post.body);
       const ytEmbedUrl = ytId ? `https://www.youtube.com/embed/${ytId}` : null;
 
@@ -130,36 +134,28 @@
       }
 
       let bodyText = post.body || '';
-      if (ytId) {
-        bodyText = bodyText.replace(/https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/\S+/g, '');
-      }
+      if (ytId) bodyText = bodyText.replace(/https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/\S+/g, '');
 
       document.getElementById('post-view').innerHTML = `
         <div class="post-header">
           <div>
-            <div class="meta-info">${post.category || 'Технологии'} • ${new Date(post.createdAt).toLocaleDateString()}</div>
+            <div class="meta-info">${post.category || 'Технологии'} • ${new Date(post.createdAt).toLocaleDateString('ru-RU')}</div>
             <h1 style="margin: 0; font-size: 32px; letter-spacing: -0.8px; line-height: 1.1;">${post.title}</h1>
           </div>
           <button onclick="toggleBookmark('${post._id}')" class="bookmark-btn ${isBookmarked ? 'active' : ''}" id="book-btn">
             ${isBookmarked ? '🔖' : '📑'}
           </button>
         </div>
-
         ${mediaHtml}
-
-        <div class="post-body">
-          ${bodyText || post.preview || 'Текст отсутствует.'}
-        </div>
-
+        <div class="post-body">${bodyText || post.preview || 'Текст отсутствует.'}</div>
         <div style="margin-bottom: 35px;">
           ${(post.tags || []).map(t => `<span class="interest-tag">#${t}</span>`).join('')}
         </div>
-
         <div style="background: #f5f5f7; padding: 20px; border-radius: 20px; display: flex; align-items: center; gap: 15px; border: 1px solid rgba(0,0,0,0.03);">
-          <img src="${post.authorId?.avatarUrl || 'https://api.dicebear.com/7.x/big-ears/svg?seed=' + post.authorId?.username}" style="width:50px; height:50px; border-radius:50%; background: #fff; border: 1px solid #ddd; object-fit: cover;">
+          <img src="${post.authorId?.avatarUrl || ''}" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${post.authorId?.username || 'U'}')" style="width:50px; height:50px; border-radius:50%; background: #fff; border: 1px solid #ddd; object-fit: cover;">
           <div>
             <div style="font-size: 12px; color: #86868b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Автор</div>
-            <strong style="font-size: 17px; color: #1d1d1f;">${post.authorId?.username || 'Tech Expert'}</strong>
+            <strong style="font-size: 17px; color: #1d1d1f;">${post.authorId?.username || 'Пользователь'}</strong>
           </div>
         </div>
       `;
@@ -175,7 +171,6 @@
   function toggleBookmark(id) {
     let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
     const btn = document.getElementById('book-btn');
-
     if (bookmarks.includes(id)) {
       bookmarks = bookmarks.filter(b => b !== id);
       btn.classList.remove('active');
@@ -191,7 +186,7 @@
   async function loadComments() {
     const list = document.getElementById('comments-list');
     const countSpan = document.getElementById('comm-total');
-    const currentUserId = currentUser ? (currentUser.id || currentUser._id) : null;
+    const currentUserId = currentUser ? (currentUser._id || currentUser.id) : null;
 
     try {
       const res = await fetch(`/api/comments/${postId}`);
@@ -206,15 +201,15 @@
       list.innerHTML = comments.map(c => {
         const author = c.authorId || {};
         const authorIdStr = author._id || author;
-        const isMyComment = currentUserId && authorIdStr === currentUserId;
-        const avatar = author.avatarUrl || `https://api.dicebear.com/7.x/big-ears/svg?seed=${author.username || 'user'}`;
+        const isMyComment = currentUserId && authorIdStr === String(currentUserId);
+        const avatar = author.avatarUrl || `https://ui-avatars.com/api/?name=${author.username || 'U'}`;
 
         return `
           <div class="comment-item" id="comment-${c._id}">
             <img src="${avatar}" class="comment-avatar">
             <div class="comment-bubble">
               <div style="display: flex; justify-content: space-between; align-items: center;">
-                <strong>${author.username || 'Инноватор'}</strong>
+                <strong>${author.username || 'Пользователь'}</strong>
                 ${isMyComment ? `<span class="delete-btn" title="Удалить" onclick="deleteComment('${c._id}')">🗑️</span>` : ''}
               </div>
               <div style="margin-top: 6px; color: #3a3a3c;">${c.text}</div>
@@ -237,38 +232,25 @@
       const res = await fetch('/api/comments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          postId,
-          userId: currentUser.id || currentUser._id,
-          text
-        })
+        body: JSON.stringify({ postId, userId: currentUser._id || currentUser.id, text })
       });
       if (res.ok) {
         input.value = '';
-        await loadComments();
+        await loadComments(); // Перезагружаем список сразу
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { alert("Ошибка отправки"); }
   }
 
   async function deleteComment(commentId) {
-    if (!confirm("Удалить комментарий?")) return;
-
-    // Скрываем сразу для скорости (Optimistic UI)
-    const el = document.getElementById(`comment-${commentId}`);
-    if (el) el.style.opacity = '0.3';
-
+    if (!confirm("Удалить этот комментарий?")) return;
     try {
       const res = await fetch(`/api/comments/${commentId}`, { method: 'DELETE' });
       if (res.ok) {
-        await loadComments();
-      } else {
-        if (el) el.style.opacity = '1';
-        alert("Не удалось удалить.");
+        document.getElementById(`comment-${commentId}`).remove();
+        const countSpan = document.getElementById('comm-total');
+        countSpan.innerText = Math.max(0, parseInt(countSpan.innerText) - 1);
       }
-    } catch (e) {
-      if (el) el.style.opacity = '1';
-      alert("Ошибка сети.");
-    }
+    } catch (e) { alert("Ошибка удаления"); }
   }
 
   document.getElementById('new-comment-text').addEventListener('keypress', (e) => {
