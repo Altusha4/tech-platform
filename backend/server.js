@@ -67,6 +67,32 @@ const deleteLocalFile = (relativeUrl) => {
     }
 };
 
+// --- 0. АГРЕГАЦИЯ (ТРЕБОВАНИЕ ДЛЯ 2 СТУДЕНТОВ) ---
+// Группировка контента по категориям для аналитики
+app.get('/api/stats/categories', async (req, res) => {
+    try {
+        const stats = await Content.aggregate([
+            {
+                $group: {
+                    _id: "$category",
+                    count: { $sum: 1 },
+                    avgLikes: { $avg: "$likes" }
+                }
+            },
+            { $sort: { count: -1 } },
+            {
+                $project: {
+                    category: "$_id",
+                    count: 1,
+                    avgLikes: { $round: ["$avgLikes", 1] },
+                    _id: 0
+                }
+            }
+        ]);
+        res.json(stats);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // --- 1. ПОЛЬЗОВАТЕЛИ ---
 
 app.post('/api/users/upload-avatar', uploadAvatar.single('avatar'), async (req, res) => {
@@ -129,6 +155,10 @@ app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => 
             authorId, likes: 0, likedBy: [], stats: { views: 0, commentsCount: 0 }
         });
         await newPost.save();
+
+        // Advanced Update: $inc для статистики пользователя
+        await User.findByIdAndUpdate(authorId, { $inc: { 'stats.postsCount': 1 } });
+
         res.status(201).json(newPost);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -138,9 +168,10 @@ app.get('/api/content/single/:id', async (req, res) => {
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ error: "Неверный формат ID" });
 
-        const post = await Content.findById(id).populate('authorId', 'username avatarUrl');
-        if (!post) return res.status(404).json({ error: "Публикация не найдена" });
+        const post = await Content.findByIdAndUpdate(id, { $inc: { 'stats.views': 1 } }, { new: true })
+            .populate('authorId', 'username avatarUrl');
 
+        if (!post) return res.status(404).json({ error: "Публикация не найдена" });
         res.json(post);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -153,7 +184,8 @@ app.delete('/api/content/:id', async (req, res) => {
             await Promise.all([
                 Content.findByIdAndDelete(req.params.id),
                 Comment.deleteMany({ postId: req.params.id }),
-                Notification.deleteMany({ contentId: req.params.id })
+                Notification.deleteMany({ postId: req.params.id }),
+                User.findByIdAndUpdate(post.authorId, { $inc: { 'stats.postsCount': -1 } })
             ]);
         }
         res.json({ message: "Удалено" });
@@ -225,7 +257,6 @@ app.post('/api/follow', async (req, res) => {
             res.json({ following: false });
         } else {
             await Follow.create({ follower: followerId, following: followingId });
-            // ИСПРАВЛЕНО: recipient и sender
             await Notification.create({
                 recipient: followingId,
                 sender: followerId,
@@ -251,57 +282,50 @@ app.post('/api/content/:id/like', async (req, res) => {
         const { userId } = req.body;
         const post = await Content.findById(req.params.id);
         if (!post) return res.status(404).json({ error: "Post not found" });
+
         const isLiked = post.likedBy.map(id => id.toString()).includes(userId.toString());
-        if (isLiked) {
-            post.likedBy = post.likedBy.filter(id => id.toString() !== userId.toString());
-            post.likes = Math.max(0, post.likes - 1);
-        } else {
-            post.likedBy.push(userId);
-            post.likes += 1;
-            if (post.authorId.toString() !== userId.toString()) {
-                // ИСПРАВЛЕНО: recipient и sender
-                await Notification.create({
-                    recipient: post.authorId,
-                    sender: userId,
-                    type: 'like',
-                    message: `лайкнул(а) ваш пост`,
-                    contentId: post._id
-                });
-            }
+
+        // Advanced Update: $addToSet (уникальное добавление) и $pull (удаление)
+        const update = isLiked
+            ? { $pull: { likedBy: userId }, $inc: { likes: -1 } }
+            : { $addToSet: { likedBy: userId }, $inc: { likes: 1 } };
+
+        const updatedPost = await Content.findByIdAndUpdate(req.params.id, update, { new: true });
+
+        if (!isLiked && post.authorId.toString() !== userId.toString()) {
+            await Notification.create({
+                recipient: post.authorId,
+                sender: userId,
+                type: 'like',
+                message: `лайкнул(а) ваш пост`,
+                postId: post._id
+            });
         }
-        await post.save();
-        res.json({ success: true, likes: post.likes, isLiked: !isLiked });
+        res.json({ success: true, likes: updatedPost.likes, isLiked: !isLiked });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/comments', async (req, res) => {
     try {
         const { postId, userId, text } = req.body;
-
-        if (!postId || !userId || !text) {
-            return res.status(400).json({ error: "Не все поля заполнены" });
-        }
+        if (!postId || !userId || !text) return res.status(400).json({ error: "Данные не полные" });
 
         const comment = await Comment.create({ postId, authorId: userId, text });
         const post = await Content.findByIdAndUpdate(postId, { $inc: { 'stats.commentsCount': 1 } });
 
         if (post && post.authorId.toString() !== userId.toString()) {
-            // ИСПРАВЛЕНО: recipient и sender
             await Notification.create({
                 recipient: post.authorId,
                 sender: userId,
                 type: 'comment',
                 message: `прокомментировал(а) ваш пост`,
-                contentId: post._id
+                postId: post._id
             });
         }
 
         const populated = await comment.populate('authorId', 'username avatarUrl');
         res.status(201).json(populated);
-    } catch (err) {
-        console.error("Ошибка при создании комментария:", err);
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/comments/:id', async (req, res) => {
@@ -322,13 +346,26 @@ app.get('/api/comments/:postId', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// --- 6. УВЕДОМЛЕНИЯ И СБРОС ТОЧКИ ---
+
+// Получение списка уведомлений
 app.get('/api/notifications/:userId', async (req, res) => {
     try {
-        // ИСПРАВЛЕНО: поиск по recipient и заселение sender
         const notes = await Notification.find({ recipient: req.params.userId })
             .populate('sender', 'username avatarUrl')
             .sort({ createdAt: -1 });
         res.json(notes);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Роут для сброса красной точки (Requirement: Advanced Update Operator $set)
+app.put('/api/notifications/read-all/:userId', async (req, res) => {
+    try {
+        await Notification.updateMany(
+            { recipient: req.params.userId, read: false },
+            { $set: { read: true } }
+        );
+        res.json({ success: true, message: "Все уведомления прочитаны" });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

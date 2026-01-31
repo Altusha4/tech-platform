@@ -32,12 +32,13 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: 'https://api.dicebear.com/7.x/big-ears/svg?seed=Lucky'
     },
-    // Социальные связи
+    // Социальные связи (Referenced Data Model)
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     // Сохраненные посты (Закладки)
     bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Content' }],
 
+    // Вложенные данные (Embedded Data Model)
     stats: {
         postsCount: { type: Number, default: 0 },
         totalLikes: { type: Number, default: 0 },
@@ -48,7 +49,10 @@ const userSchema = new mongoose.Schema({
     collection: 'users'
 });
 
-// Индексы для быстрого поиска
 userSchema.index({ username: 'text', email: 1 });
+
+userSchema.index({ role: 1, createdAt: -1 });
+
+userSchema.index({ interests: 1, role: 1 });
 
 module.exports = mongoose.model('User', userSchema);
