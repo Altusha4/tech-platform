@@ -36,6 +36,9 @@
     .btn-delete-post { background: none; border: none; color: var(--red); font-size: 13px; font-weight: 600; cursor: pointer; padding: 5px 10px; border-radius: 8px; transition: 0.2s; }
     .btn-delete-post:hover { background: rgba(255, 59, 48, 0.1); }
 
+    .btn-edit-post { background: none; border: none; color: var(--primary); font-size: 13px; font-weight: 600; cursor: pointer; padding: 5px 10px; border-radius: 8px; transition: 0.2s; }
+    .btn-edit-post:hover { background: rgba(0, 113, 227, 0.1); }
+
     .interests-container { background: #fafafa; padding: 25px; border-radius: 20px; border: 1px solid #eee; }
     .interests-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin: 20px 0; }
     .interest-item { cursor: pointer; }
@@ -242,7 +245,12 @@
           <div class="post-title" onclick="location.href='/post.html?id=${post._id}'">${post.title}</div>
           <div class="post-actions">
              <div style="font-size:13px; color:#86868b;">❤️ ${post.likes || 0}  💬 ${post.stats?.commentsCount || 0}</div>
-             ${isOwnPost ? `<button class="btn-delete-post" onclick="deletePost('${post._id}')">Удалить</button>` : ''}
+             ${isOwnPost ? `
+               <div>
+                 <button class="btn-edit-post" onclick="location.href='/create-post.html?edit=${post._id}'">Изменить</button>
+                 <button class="btn-delete-post" onclick="deletePost('${post._id}')">Удалить</button>
+               </div>
+             ` : ''}
           </div>
         </div>
       </div>

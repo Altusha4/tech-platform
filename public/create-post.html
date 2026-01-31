@@ -90,14 +90,12 @@
 
 <script>
   const urlParams = new URLSearchParams(window.location.search);
-  const editPostId = urlParams.get('edit'); // Проверяем, редактируем ли мы
+  const editPostId = urlParams.get('edit');
 
-  // --- 1. ИНИЦИАЛИЗАЦИЯ ПРИ РЕДАКТИРОВАНИИ ---
   async function checkEditMode() {
     if (editPostId) {
       document.getElementById('page-title').innerText = "Изменить инновацию ✍️";
       document.getElementById('publish-btn').innerText = "Сохранить изменения";
-      // Скрываем загрузку файлов при редактировании (чтобы не усложнять замену медиа)
       document.getElementById('media-section').classList.add('hidden');
 
       try {
@@ -110,10 +108,9 @@
           document.getElementById('post-category').value = post.category;
           document.getElementById('post-body').value = post.body;
 
-          // Отмечаем теги
           if (post.tags) {
             post.tags.forEach(tag => {
-              const checkbox = document.querySelector(`.tag-checkbox[value="${tag}"]`);
+              const checkbox = document.querySelector(`.tag-checkbox[value="${tag.toLowerCase()}"]`);
               if (checkbox) checkbox.checked = true;
             });
           }
@@ -143,7 +140,6 @@
     }
   }
 
-  // --- 2. ГЛАВНАЯ ФУНКЦИЯ ОТПРАВКИ ---
   async function publish() {
     const title = document.getElementById('post-title').value.trim();
     const preview = document.getElementById('post-preview').value.trim();
@@ -153,7 +149,7 @@
 
     const userData = localStorage.getItem('user');
     const user = userData ? JSON.parse(userData) : null;
-    const authorId = user?.id || user?._id;
+    const authorId = user?._id || user?.id;
 
     if (!authorId) return alert("Пожалуйста, войдите в систему");
     if (!title) return alert("Заголовок обязателен!");
@@ -162,7 +158,6 @@
     btn.disabled = true;
     btn.innerText = "Сохранение...";
 
-    // ОПРЕДЕЛЯЕМ МЕТОД И URL
     const method = editPostId ? 'PUT' : 'POST';
     const apiUrl = editPostId ? `/api/content/${editPostId}` : '/api/content';
 
@@ -170,7 +165,7 @@
     let headers = { 'x-author-id': authorId };
 
     if (!editPostId) {
-      // Режим создания (FormData для файлов)
+      // POST MODE (FormData)
       const formData = new FormData();
       formData.append('title', title);
       formData.append('preview', preview);
@@ -186,11 +181,16 @@
       if (mediaFile) formData.append('mediaFile', mediaFile);
 
       requestBody = formData;
-      // При FormData браузер сам поставит правильный Content-Type
     } else {
-      // Режим редактирования (JSON, так как файлы не меняем)
+      // PUT MODE (JSON)
       headers['Content-Type'] = 'application/json';
-      requestBody = JSON.stringify({ title, preview, body, category, tags });
+      requestBody = JSON.stringify({
+        title,
+        preview,
+        body,
+        category,
+        tags: JSON.stringify(tags) // Упаковываем в строку, чтобы серверный JSON.parse сработал
+      });
     }
 
     try {
@@ -209,14 +209,14 @@
         alert("Ошибка: " + (data.error || "Не удалось сохранить"));
       }
     } catch (e) {
-      alert("Ошибка сети.");
+      console.error(e);
+      alert("Ошибка сети. Проверьте соединение с сервером.");
     } finally {
       btn.disabled = false;
       btn.innerText = editPostId ? "Сохранить изменения" : "Опубликовать в ленту";
     }
   }
 
-  // Запуск проверки режима при загрузке
   checkEditMode();
 </script>
 </body>
