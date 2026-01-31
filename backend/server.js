@@ -6,6 +6,7 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 
+// Импорт моделей
 const authRoutes = require('./routes/auth');
 const User = require('./models/User');
 const Content = require('./models/Content');
@@ -15,6 +16,8 @@ const Comment = require('./models/Comment');
 
 const app = express();
 const publicPath = path.join(__dirname, '..', 'public');
+
+// --- НАСТРОЙКА CORS И ПАРСЕРОВ ---
 app.use(cors({
     origin: '*',
     allowedHeaders: ['Content-Type', 'x-author-id']
@@ -22,12 +25,14 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// --- НАСТРОЙКА ХРАНИЛИЩА (Multer) ---
 const storageConfigs = {
     avatars: path.join(publicPath, 'uploads', 'avatars'),
     images: path.join(publicPath, 'uploads', 'images'),
     videos: path.join(publicPath, 'uploads', 'videos')
 };
 
+// Проверка и создание папок
 Object.values(storageConfigs).forEach(dir => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
@@ -48,6 +53,7 @@ const contentStorage = multer.diskStorage({
 const uploadAvatar = multer({ storage: avatarStorage });
 const uploadContent = multer({ storage: contentStorage });
 
+// --- СТАТИКА И API АВТОРИЗАЦИИ ---
 app.use('/api/auth', authRoutes);
 app.use('/uploads', express.static(path.join(publicPath, 'uploads')));
 
@@ -61,6 +67,7 @@ const deleteLocalFile = (relativeUrl) => {
     }
 };
 
+// --- 0. АГРЕГАЦИЯ (ТРЕБОВАНИЕ ДЛЯ 2 СТУДЕНТОВ) ---
 app.get('/api/stats/categories', async (req, res) => {
     try {
         const stats = await Content.aggregate([
@@ -85,6 +92,7 @@ app.get('/api/stats/categories', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// --- 1. ПОЛЬЗОВАТЕЛИ ---
 app.post('/api/users/upload-avatar', uploadAvatar.single('avatar'), async (req, res) => {
     try {
         const userId = req.headers['x-author-id'] || req.body.userId;
@@ -125,6 +133,9 @@ app.get('/api/users/mini-profile/:userId', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// --- 2. КОНТЕНТ (CRUD) ---
+
+// CREATE
 app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => {
     try {
         const authorId = req.headers['x-author-id'] || req.body.userId;
@@ -148,6 +159,7 @@ app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => 
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// UPDATE (Исправлено: добавлен роут обновления)
 app.put('/api/content/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -172,6 +184,7 @@ app.put('/api/content/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// READ SINGLE
 app.get('/api/content/single/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -183,6 +196,7 @@ app.get('/api/content/single/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// DELETE
 app.delete('/api/content/:id', async (req, res) => {
     try {
         const post = await Content.findById(req.params.id);
@@ -199,6 +213,7 @@ app.delete('/api/content/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// --- 3. ЛЕНТЫ ---
 const populateStats = async (posts) => {
     return await Promise.all(posts.map(async (p) => {
         const count = await Comment.countDocuments({ postId: p._id });
@@ -242,6 +257,7 @@ app.get('/api/content/liked/:userId', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// --- 4. ПОДПИСКИ ---
 app.post('/api/follow', async (req, res) => {
     try {
         const { followerId, followingId } = req.body;
@@ -267,6 +283,7 @@ app.get('/api/follow/status', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// --- 5. ЛАЙКИ И КОММЕНТАРИИ ---
 app.post('/api/content/:id/like', async (req, res) => {
     try {
         const { userId } = req.body;
@@ -319,6 +336,7 @@ app.get('/api/comments/:postId', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// --- 6. УВЕДОМЛЕНИЯ ---
 app.get('/api/notifications/:userId', async (req, res) => {
     try {
         const notes = await Notification.find({ recipient: req.params.userId }).populate('sender', 'username avatarUrl').sort({ createdAt: -1 });
