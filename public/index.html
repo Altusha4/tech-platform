@@ -29,11 +29,7 @@
 
         .main-layout { display: grid; grid-template-columns: 1fr 300px; gap: 30px; }
 
-        .post-stub {
-            background: white; border-radius: 18px; padding: 16px 20px; display: flex;
-            align-items: center; gap: 15px; margin-bottom: 25px; cursor: pointer;
-            box-shadow: var(--card-shadow); border: 1px solid rgba(0,0,0,0.05); transition: 0.2s;
-        }
+        .post-stub { background: white; border-radius: 18px; padding: 16px 20px; display: flex; align-items: center; gap: 15px; margin-bottom: 25px; cursor: pointer; box-shadow: var(--card-shadow); border: 1px solid rgba(0,0,0,0.05); transition: 0.2s; }
         .post-stub:hover { background: #fafafa; border-color: var(--primary); }
         .post-stub-input { background: #f5f5f7; flex-grow: 1; padding: 12px 20px; border-radius: 25px; color: #86868b; font-size: 15px; font-weight: 500; }
         .mini-avatar-stub { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #eee; }
@@ -59,11 +55,7 @@
         .play-overlay { position: absolute; background: rgba(0,0,0,0.6); color: white; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 2px solid white; pointer-events: none; }
 
         .author-wrapper { position: relative; display: inline-block; }
-        .hover-card {
-            position: absolute; bottom: 120%; left: 0; width: 260px; background: white;
-            border-radius: 20px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-            border: 1px solid #f0f0f2; display: none; z-index: 1000; animation: slideUp 0.3s ease;
-        }
+        .hover-card { position: absolute; bottom: 120%; left: 0; width: 260px; background: white; border-radius: 20px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); border: 1px solid #f0f0f2; display: none; z-index: 1000; animation: slideUp 0.3s ease; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .author-wrapper:hover .hover-card { display: block; }
 
@@ -162,7 +154,7 @@
         renderUserHeader(currentUser);
         setView(currentView);
         checkNewNotifications();
-        setInterval(checkNewNotifications, 30000);
+        setInterval(checkNewNotifications, 15000);
         fetchFeed();
     }
 
@@ -171,7 +163,7 @@
         const miniAvatarPlace = document.getElementById('mini-avatar-placeholder');
         const avatarHtml = user.avatarUrl
             ? `<img src="${user.avatarUrl}" class="mini-avatar-stub">`
-            : `<div class="mini-avatar-stub" style="background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; font-size:14px;">${user.username[0]}</div>`;
+            : `<div class="mini-avatar-stub" style="background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; font-size:14px;">${user.username ? user.username[0] : 'U'}</div>`;
 
         if (miniAvatarPlace) miniAvatarPlace.innerHTML = avatarHtml;
         authSection.innerHTML = `
@@ -189,8 +181,11 @@
             const res = await fetch(`/api/notifications/${userId}`);
             const data = await res.json();
             const dot = document.getElementById('notif-dot');
-            if (dot) dot.style.display = data.some(n => !n.read) ? 'block' : 'none';
-        } catch (e) {}
+            if (dot) {
+                const hasUnread = data.some(n => n.read === false);
+                dot.style.display = hasUnread ? 'block' : 'none';
+            }
+        } catch (e) { console.error("Notif Error:", e); }
     }
 
     function setFeedType(type) {
@@ -219,24 +214,36 @@
         fetchFeed();
     }
 
+    // УМНАЯ ЛЕНТА: если "Для вас", отправляем интересы на сервер
     async function fetchFeed() {
         const feedEl = document.getElementById('feed');
         feedEl.innerHTML = '<div style="text-align:center; padding:50px;">Загрузка инноваций...</div>';
         try {
             const userId = currentUser._id || currentUser.id;
             let url;
-            switch(currentFeedType) {
-                case 'following': url = `/api/content/following/${userId}`; break;
-                case 'my-posts': url = `/api/content/my-posts/${userId}`; break;
-                case 'liked': url = `/api/content/liked/${userId}`; break;
-                default: url = `/api/content?category=${currentCategory}`;
+
+            if (currentFeedType === 'all') {
+                // Если юзер на общей ленте, учитываем его интересы
+                const interests = currentUser.interests && currentUser.interests.length > 0
+                    ? currentUser.interests.join(',').toLowerCase()
+                    : '';
+                url = `/api/content?category=${currentCategory}&interests=${interests}`;
+            } else {
+                switch(currentFeedType) {
+                    case 'following': url = `/api/content/following/${userId}`; break;
+                    case 'my-posts': url = `/api/content/my-posts/${userId}`; break;
+                    case 'liked': url = `/api/content/liked/${userId}`; break;
+                }
             }
 
             const res = await fetch(url);
             allPosts = await res.json();
             renderPosts(allPosts);
             updateTrendingTags(allPosts);
-        } catch (e) { feedEl.innerHTML = "Ошибка загрузки контента."; }
+        } catch (e) {
+            console.error("Feed Error:", e);
+            feedEl.innerHTML = "<div style='text-align:center; color:red;'>Ошибка загрузки контента.</div>";
+        }
     }
 
     function renderPosts(data) {
@@ -250,10 +257,10 @@
 
         feed.innerHTML = data.map(item => {
             const ytId = getYouTubeID(item.mediaUrl) || getYouTubeID(item.body);
-            const userHasLiked = item.likedBy?.includes(userId);
+            const userHasLiked = item.likedBy?.map(id => id.toString()).includes(userId.toString());
             const author = item.authorId || {};
             const authorId = author._id || author;
-            const isOwner = authorId === userId;
+            const isOwner = authorId.toString() === userId.toString();
 
             return `
             <div class="card" id="post-${item._id}">
@@ -265,7 +272,8 @@
 
                 <div onclick="location.href='/post.html?id=${item._id}'" style="cursor:pointer">
                     ${item.mediaUrl && !ytId ? `<div class="media-container"><img src="${item.mediaUrl}"></div>` :
-                (ytId ? `<div class="media-container"><img src="https://img.youtube.com/vi/${ytId}/maxresdefault.jpg"><div class="play-overlay">▶</div></div>` : `<p>${item.preview || ''}</p>`)}
+                (ytId ? `<div class="media-container"><img src="https://img.youtube.com/vi/${ytId}/maxresdefault.jpg"><div class="play-overlay">▶</div></div>` :
+                    `<p style="color:#555; line-height:1.5;">${item.preview || 'Нажмите, чтобы прочитать полностью...'}</p>`)}
                 </div>
 
                 <div class="actions-bar">
@@ -308,7 +316,7 @@
             const follow = await followRes.json();
             card.innerHTML = `
                 <div class="hc-header">
-                    <img src="${user.avatarUrl || 'https://ui-avatars.com/api/?name='+user.username}" class="hc-avatar">
+                    <img src="${user.avatarUrl || 'https://api.dicebear.com/7.x/big-ears/svg?seed='+user.username}" class="hc-avatar">
                     <div>
                         <div style="font-weight:700;">${user.username}</div>
                         <div style="font-size:11px; color:#86868b;">Инноватор</div>
@@ -318,114 +326,84 @@
                     <div class="hc-stat-item"><b>${user.postsCount || 0}</b> постов</div>
                     <div class="hc-stat-item"><b>${user.followersCount || 0}</b> подп.</div>
                 </div>
-                ${authorId !== me ? `<button onclick="handleFollowHC('${authorId}', '${postId}')" class="btn-hc-follow ${follow.following ? 'active' : ''}">${follow.following ? 'Отписаться' : 'Подписаться'}</button>` : ''}
+                ${authorId.toString() !== me.toString() ? `<button onclick="handleFollowHC('${authorId}', '${postId}')" class="btn-hc-follow ${follow.following ? 'active' : ''}">${follow.following ? 'Отписаться' : 'Подписаться'}</button>` : ''}
             `;
         } catch (e) { card.innerHTML = "Ошибка данных"; }
     }
 
     async function handleFollowHC(targetId, postId) {
         const me = currentUser._id || currentUser.id;
-        await fetch('/api/follow', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ followerId: me, followingId: targetId })
-        });
-        const hcCard = document.getElementById(`hover-card-${postId}`);
-        if (hcCard) { hcCard.innerHTML = "Загрузка..."; showMiniProfile(targetId, postId); }
+        try {
+            const res = await fetch('/api/follow', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ followerId: me, followingId: targetId })
+            });
+            if (res.ok) {
+                const hcCard = document.getElementById(`hover-card-${postId}`);
+                if (hcCard) { hcCard.innerHTML = "Загрузка..."; showMiniProfile(targetId, postId); }
+            }
+        } catch (e) { console.error(e); }
     }
 
     async function handleLike(id) {
         const btn = document.getElementById(`like-btn-${id}`);
         const span = document.getElementById(`likes-count-${id}`);
         const wasActive = btn.classList.contains('active');
+
         btn.classList.toggle('active');
-        span.innerText = wasActive ? parseInt(span.innerText) - 1 : parseInt(span.innerText) + 1;
+        span.innerText = wasActive ? Math.max(0, parseInt(span.innerText) - 1) : parseInt(span.innerText) + 1;
+
         try {
             await fetch(`/api/content/${id}/like`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ userId: currentUser._id || currentUser.id })
             });
-        } catch (e) {}
+        } catch (e) { console.error("Like error:", e); }
     }
 
     function toggleComments(id) {
         const block = document.getElementById(`comments-block-${id}`);
         if (!block) return;
-
         const isHidden = block.style.display === 'none' || block.style.display === '';
         block.style.display = isHidden ? 'block' : 'none';
-
-        if (isHidden) {
-            loadCommentsMain(id);
-        }
+        if (isHidden) loadCommentsMain(id);
     }
 
     async function loadCommentsMain(postId) {
         const list = document.getElementById(`comments-list-${postId}`);
-        if (!list) return;
-
         try {
             const res = await fetch(`/api/comments/${postId}`);
             const comments = await res.json();
-
-            if (comments.length === 0) {
-                list.innerHTML = '<div style="font-size:12px; color:#888; padding:5px 0;">Пока нет комментариев.</div>';
-            } else {
-                list.innerHTML = comments.map(c => `
-                    <div class="comment-item">
-                        <img src="${c.authorId?.avatarUrl || ''}"
-                             onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(c.authorId?.username || 'U')}'"
-                             style="width:24px; height:24px; border-radius:50%; object-fit:cover;">
-                        <div class="comment-bubble">
-                            <b style="font-size:12px;">${c.authorId?.username || 'User'}:</b> ${c.text}
-                        </div>
+            list.innerHTML = comments.length ? comments.map(c => `
+                <div class="comment-item">
+                    <img src="${c.authorId?.avatarUrl || ''}" onerror="this.src='https://api.dicebear.com/7.x/big-ears/svg?seed=${c.authorId?.username || 'U'}'" style="width:24px; height:24px; border-radius:50%; object-fit:cover;">
+                    <div class="comment-bubble">
+                        <b style="font-size:12px;">${c.authorId?.username || 'User'}:</b> ${c.text}
                     </div>
-                `).join('');
-                list.scrollTop = list.scrollHeight;
-            }
-        } catch (e) {
-            list.innerHTML = '<div style="color:red; font-size:12px;">Ошибка загрузки</div>';
-        }
+                </div>`).join('') : '<div style="font-size:12px; color:#888; padding:10px 0;">Пока нет комментариев.</div>';
+            list.scrollTop = list.scrollHeight;
+        } catch (e) { console.error(e); }
     }
 
     async function addCommentMain(postId) {
         const input = document.getElementById(`input-${postId}`);
         const text = input.value.trim();
-
         if (!text) return;
-        if (!currentUser) {
-            alert("Пожалуйста, войдите в аккаунт");
-            return;
-        }
-
         try {
             const res = await fetch('/api/comments', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    postId,
-                    userId: currentUser.id || currentUser._id,
-                    text
-                })
+                body: JSON.stringify({ postId, userId: currentUser.id || currentUser._id, text })
             });
-
             if (res.ok) {
                 input.value = '';
-                // Мгновенно обновляем список комментариев
                 await loadCommentsMain(postId);
-
-                // Визуально обновляем счетчик
                 const countSpan = document.getElementById(`comm-count-${postId}`);
-                if (countSpan) {
-                    countSpan.innerText = parseInt(countSpan.innerText) + 1;
-                }
-            } else {
-                alert("Не удалось отправить комментарий");
+                if (countSpan) countSpan.innerText = parseInt(countSpan.innerText) + 1;
             }
-        } catch (e) {
-            alert("Ошибка при отправке");
-        }
+        } catch (e) { console.error(e); }
     }
 
     function handleSearch() {
@@ -447,9 +425,11 @@
     }
 
     async function deletePost(id) {
-        if(!confirm("Удалить этот пост?")) return;
-        const res = await fetch(`/api/content/${id}`, { method: 'DELETE' });
-        if(res.ok) fetchFeed();
+        if(!confirm("Удалить этот пост навсегда?")) return;
+        try {
+            const res = await fetch(`/api/content/${id}`, { method: 'DELETE' });
+            if(res.ok) fetchFeed();
+        } catch (e) { console.error(e); }
     }
 
     function logout() { localStorage.clear(); window.location.href = '/login.html'; }

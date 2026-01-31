@@ -18,12 +18,18 @@ router.post('/register', async (req, res) => {
         // 2. Хеширование пароля
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        // ИСПРАВЛЕНО: Приводим все интересы к нижнему регистру сразу при регистрации
+        // Это обеспечит совпадение с логикой профиля и индексами БД
+        const normalizedInterests = interests && Array.isArray(interests)
+            ? interests.map(i => i.toLowerCase())
+            : [];
+
         // 3. Создание нового пользователя
         const newUser = new User({
             username,
             email: email.toLowerCase(),
             passwordHash: hashedPassword,
-            interests: interests || [],
+            interests: normalizedInterests,
             // Если фронтенд не прислал аватар, ставим стандартный DiceBear
             avatarUrl: avatarUrl || `https://api.dicebear.com/7.x/big-ears/svg?seed=${username}`,
             stats: {
@@ -66,7 +72,7 @@ router.post('/login', async (req, res) => {
                     username: user.username,
                     email: user.email,
                     role: user.role,
-                    interests: user.interests,
+                    interests: user.interests, // Теперь они всегда будут в нижнем регистре
                     avatarUrl: user.avatarUrl,
                     stats: user.stats
                 }

@@ -369,6 +369,18 @@ app.put('/api/notifications/read-all/:userId', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.delete('/api/users/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        await Promise.all([
+            User.findByIdAndDelete(userId),
+            Content.deleteMany({ authorId: userId }),
+            Comment.deleteMany({ authorId: userId }),
+            Notification.deleteMany({ recipient: userId })
+        ]);
+        res.json({ message: "Аккаунт и все данные удалены" });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
 app.use(express.static(publicPath));
 
 mongoose.connect(process.env.MONGO_URI)

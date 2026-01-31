@@ -50,7 +50,9 @@
       box-shadow: 0 4px 12px rgba(0, 113, 227, 0.2);
     }
 
-    .btn-save-interests { width: 100%; background: var(--primary); color: white; border: none; padding: 16px; border-radius: 14px; cursor: pointer; font-weight: 700; font-size: 16px; }
+    .btn-save-interests { width: 100%; background: var(--primary); color: white; border: none; padding: 16px; border-radius: 14px; cursor: pointer; font-weight: 700; font-size: 16px; margin-bottom: 15px; }
+    .btn-danger-outline { width: 100%; background: none; color: var(--red); border: 1px solid var(--red); padding: 12px; border-radius: 14px; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.2s; }
+    .btn-danger-outline:hover { background: var(--red); color: white; }
 
     .hidden { display: none; }
     .upload-section { margin-bottom: 25px; padding: 30px; border: 2px dashed #d2d2d7; border-radius: 20px; text-align: center; }
@@ -75,7 +77,7 @@
       <button class="tab-btn active" id="tab-posts" onclick="switchTab('posts')">Мои посты <span id="post-count"></span></button>
       <button class="tab-btn" id="tab-bookmarks" onclick="switchTab('bookmarks')">Закладки 🔖</button>
       <button class="tab-btn" id="tab-liked" onclick="switchTab('liked')">Понравилось ❤️</button>
-      <button class="tab-btn" id="tab-interests" onclick="switchTab('interests')">Интересы 🎯</button>
+      <button class="tab-btn" id="tab-interests" onclick="switchTab('interests')">Настройки 🎯</button>
     </div>
 
     <div id="content-posts">
@@ -92,7 +94,7 @@
 
     <div id="content-interests" class="hidden">
       <div class="interests-container">
-        <h3 style="margin-top:0">Настройка вашей ленты</h3>
+        <h3 style="margin-top:0">Интересы и Лента</h3>
         <p style="color: #86868b; font-size: 14px; margin-bottom: 20px;">Выберите темы для персональных рекомендаций.</p>
         <div class="interests-grid">
           <label class="interest-item"><input type="checkbox" name="profile-interest" value="Programming"><span class="tag-box">💻 Programming</span></label>
@@ -103,6 +105,11 @@
           <label class="interest-item"><input type="checkbox" name="profile-interest" value="Future"><span class="tag-box">🚀 Будущее & AI</span></label>
         </div>
         <button onclick="updateInterests()" id="interest-save-btn" class="btn-save-interests">Сохранить предпочтения</button>
+
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 25px 0;">
+        <h3 style="color: var(--red)">Опасная зона</h3>
+        <p style="color: #86868b; font-size: 13px; margin-bottom: 15px;">Удаление аккаунта приведет к потере всех ваших данных без возможности восстановления.</p>
+        <button onclick="deleteAccount()" class="btn-danger-outline">Удалить мой аккаунт</button>
       </div>
     </div>
 
@@ -155,8 +162,10 @@
     document.getElementById('display-name').innerText = currentUser.username;
     document.getElementById('display-email').innerText = currentUser.email;
 
+    // ИСПРАВЛЕННАЯ ЛОГИКА ПОДСВЕТКИ ИНТЕРЕСОВ
+    const userInterests = currentUser.interests || [];
     document.querySelectorAll('input[name="profile-interest"]').forEach(cb => {
-      cb.checked = currentUser.interests && currentUser.interests.includes(cb.value);
+      cb.checked = userInterests.some(i => i.toLowerCase() === cb.value.toLowerCase());
     });
   }
 
@@ -168,7 +177,7 @@
 
     const userId = currentUser._id || currentUser.id;
     if(tab === 'posts') loadMyPosts();
-    if(tab === 'bookmarks') loadBookmarks(); // Загружаем из localStorage
+    if(tab === 'bookmarks') loadBookmarks();
     if(tab === 'liked') loadLikedPosts(userId);
   }
 
@@ -187,24 +196,17 @@
   async function loadBookmarks() {
     const list = document.getElementById('bookmarks-list');
     const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-
     if (bookmarks.length === 0) {
       list.innerHTML = "<p style='grid-column:1/-1; text-align:center; color:#86868b; padding:40px;'>Нет закладок 📑</p>";
       return;
     }
-
     list.innerHTML = "<p style='grid-column:1/-1; text-align:center;'>Загрузка закладок...</p>";
-
     try {
-      // Запрашиваем данные по каждому ID из закладок
       const promises = bookmarks.map(id => fetch(`/api/content/single/${id}`).then(r => r.ok ? r.json() : null));
       const results = await Promise.all(promises);
       const posts = results.filter(p => p !== null);
-
-      list.innerHTML = posts.length
-              ? posts.map(p => renderPostCard(p, false)).join('')
-              : "<p style='grid-column:1/-1; text-align:center; color:#86868b; padding:40px;'>Нет доступных закладок</p>";
-    } catch (e) { list.innerHTML = "Ошибка загрузки закладок"; }
+      list.innerHTML = posts.length ? posts.map(p => renderPostCard(p, false)).join('') : "<p style='grid-column:1/-1; text-align:center;'>Закладки пусты</p>";
+    } catch (e) { list.innerHTML = "Ошибка загрузки"; }
   }
 
   async function loadLikedPosts(userId) {
@@ -221,11 +223,7 @@
     if (!confirm('Удалить эту публикацию навсегда? 🗑️')) return;
     try {
       const res = await fetch(`/api/content/${postId}`, { method: 'DELETE' });
-      if (res.ok) {
-        loadMyPosts();
-      } else {
-        alert("Ошибка при удалении");
-      }
+      if (res.ok) { loadMyPosts(); } else { alert("Ошибка при удалении"); }
     } catch (e) { alert("Ошибка сети"); }
   }
 
@@ -251,9 +249,12 @@
     `;
   }
 
+  // ИСПРАВЛЕННАЯ ФУНКЦИЯ СОХРАНЕНИЯ ИНТЕРЕСОВ
   async function updateInterests() {
     const btn = document.getElementById('interest-save-btn');
-    const selected = Array.from(document.querySelectorAll('input[name="profile-interest"]:checked')).map(cb => cb.value);
+    const selected = Array.from(document.querySelectorAll('input[name="profile-interest"]:checked'))
+            .map(cb => cb.value.toLowerCase()); // Приводим к нижнему регистру
+
     const userId = currentUser._id || currentUser.id;
     btn.innerText = "Сохранение...";
     try {
@@ -265,11 +266,32 @@
       if(res.ok) {
         const data = await res.json();
         localStorage.setItem('user', JSON.stringify(data.user));
+        currentUser = data.user;
         alert("Интересы обновлены! ✨");
-        location.reload();
+        renderData();
       }
     } catch (e) { alert("Ошибка сохранения"); }
     btn.innerText = "Сохранить предпочтения";
+  }
+
+  // ФУНКЦИЯ УДАЛЕНИЯ АККАУНТА
+  async function deleteAccount() {
+    if (!confirm('ВНИМАНИЕ! Вы уверены, что хотите удалить свой аккаунт? Все ваши посты и данные будут удалены безвозвратно.')) return;
+    if (!confirm('ПОСЛЕДНЕЕ ПРЕДУПРЕЖДЕНИЕ: Точно удалить?')) return;
+
+    const userId = currentUser._id || currentUser.id;
+    try {
+      const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+      if (res.ok) {
+        alert('Ваш аккаунт был успешно удален. До встречи!');
+        localStorage.clear();
+        window.location.href = '/register.html';
+      } else {
+        alert('Не удалось удалить аккаунт. Попробуйте позже.');
+      }
+    } catch (e) {
+      alert('Ошибка при соединении с сервером.');
+    }
   }
 
   function toggleMode() {
