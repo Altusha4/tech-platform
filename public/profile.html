@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Мой профиль | TechPlatform</title>
+  <title>My Profile | TechPlatform</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
@@ -68,19 +68,19 @@
     <div class="profile-header">
       <div class="avatar-container" onclick="toggleMode()">
         <div class="avatar" id="avatar-circle"></div>
-        <div class="avatar-edit-overlay">ИЗМЕНИТЬ</div>
+        <div class="avatar-edit-overlay">CHANGE</div>
       </div>
       <div>
-        <h2 id="display-name">Загрузка...</h2>
+        <h2 id="display-name">Loading...</h2>
         <p id="display-email" style="color: #86868b;"></p>
       </div>
     </div>
 
     <div class="tabs">
-      <button class="tab-btn active" id="tab-posts" onclick="switchTab('posts')">Мои посты <span id="post-count"></span></button>
-      <button class="tab-btn" id="tab-bookmarks" onclick="switchTab('bookmarks')">Закладки 🔖</button>
-      <button class="tab-btn" id="tab-liked" onclick="switchTab('liked')">Понравилось ❤️</button>
-      <button class="tab-btn" id="tab-interests" onclick="switchTab('interests')">Настройки 🎯</button>
+      <button class="tab-btn active" id="tab-posts" onclick="switchTab('posts')">My Posts <span id="post-count"></span></button>
+      <button class="tab-btn" id="tab-bookmarks" onclick="switchTab('bookmarks')">Bookmarks</button>
+      <button class="tab-btn" id="tab-liked" onclick="switchTab('liked')">Liked</button>
+      <button class="tab-btn" id="tab-interests" onclick="switchTab('interests')">Settings</button>
     </div>
 
     <div id="content-posts">
@@ -97,42 +97,42 @@
 
     <div id="content-interests" class="hidden">
       <div class="interests-container">
-        <h3 style="margin-top:0">Интересы и Лента</h3>
-        <p style="color: #86868b; font-size: 14px; margin-bottom: 20px;">Выберите темы для персональных рекомендаций.</p>
+        <h3 style="margin-top:0">Interests & Feed</h3>
+        <p style="color: #86868b; font-size: 14px; margin-bottom: 20px;">Choose topics for personalized recommendations.</p>
         <div class="interests-grid">
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="Programming"><span class="tag-box">💻 Programming</span></label>
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="Design"><span class="tag-box">🎨 Design & UX</span></label>
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="Gadgets"><span class="tag-box">📱 Gadgets</span></label>
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="MongoDB"><span class="tag-box">💾 MongoDB</span></label>
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="Node.js"><span class="tag-box">⚙️ Node.js</span></label>
-          <label class="interest-item"><input type="checkbox" name="profile-interest" value="Future"><span class="tag-box">🚀 Будущее & AI</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="Programming"><span class="tag-box">Programming</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="Design"><span class="tag-box">Design & UX</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="Gadgets"><span class="tag-box">Gadgets</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="MongoDB"><span class="tag-box">MongoDB</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="Node.js"><span class="tag-box">⚙Node.js</span></label>
+          <label class="interest-item"><input type="checkbox" name="profile-interest" value="Future"><span class="tag-box">Future & AI</span></label>
         </div>
-        <button onclick="updateInterests()" id="interest-save-btn" class="btn-save-interests">Сохранить предпочтения</button>
+        <button onclick="updateInterests()" id="interest-save-btn" class="btn-save-interests">Save Preferences</button>
 
         <hr style="border: 0; border-top: 1px solid #eee; margin: 25px 0;">
-        <h3 style="color: var(--red)">Опасная зона</h3>
-        <p style="color: #86868b; font-size: 13px; margin-bottom: 15px;">Удаление аккаунта приведет к потере всех ваших данных без возможности восстановления.</p>
-        <button onclick="deleteAccount()" class="btn-danger-outline">Удалить мой аккаунт</button>
+        <h3 style="color: var(--red)">Danger Zone</h3>
+        <p style="color: #86868b; font-size: 13px; margin-bottom: 15px;">Deleting your account will result in the loss of all your data. This cannot be undone.</p>
+        <button onclick="deleteAccount()" class="btn-danger-outline">Delete My Account</button>
       </div>
     </div>
 
-    <a href="/" style="display: block; margin-top: 35px; color: var(--primary); text-decoration: none; font-size: 14px; font-weight: 600;">← Назад в ленту</a>
+    <a href="/" style="display: block; margin-top: 35px; color: var(--primary); text-decoration: none; font-size: 14px; font-weight: 600;">← Back to Feed</a>
   </div>
 
   <div id="edit-mode" class="hidden">
-    <h3>Обновление фото профиля</h3>
+    <h3>Update Profile Picture</h3>
     <div class="upload-section">
       <input type="file" id="avatar-input" accept="image/*" onchange="initCropper(event)">
       <div id="cropper-container" class="hidden">
         <div style="max-height: 300px; overflow: hidden; border-radius: 12px; margin-top: 15px;">
           <img id="cropper-image" src="" style="max-width: 100%;">
         </div>
-        <button type="button" onclick="applyCrop()" style="background:var(--primary); color:#fff; border:none; padding:12px 20px; border-radius:10px; margin-top:15px; cursor:pointer; font-weight: 600;">Обрезать</button>
+        <button type="button" onclick="applyCrop()" style="background:var(--primary); color:#fff; border:none; padding:12px 20px; border-radius:10px; margin-top:15px; cursor:pointer; font-weight: 600;">Crop</button>
       </div>
     </div>
     <div style="display: flex; gap: 12px;">
-      <button onclick="saveAvatarOnly()" id="save-avatar-btn" style="background:#28a745; color:#fff; border:none; padding:15px 25px; border-radius:12px; cursor:pointer; flex:2; font-weight: bold;">Сохранить аватар</button>
-      <button onclick="toggleMode()" style="background:#eee; border:none; padding:15px 25px; border-radius:12px; cursor:pointer; flex:1;">Отмена</button>
+      <button onclick="saveAvatarOnly()" id="save-avatar-btn" style="background:#28a745; color:#fff; border:none; padding:15px 25px; border-radius:12px; cursor:pointer; flex:2; font-weight: bold;">Save Avatar</button>
+      <button onclick="toggleMode()" style="background:#eee; border:none; padding:15px 25px; border-radius:12px; cursor:pointer; flex:1;">Cancel</button>
     </div>
   </div>
 </div>
@@ -165,7 +165,6 @@
     document.getElementById('display-name').innerText = currentUser.username;
     document.getElementById('display-email').innerText = currentUser.email;
 
-    // ИСПРАВЛЕННАЯ ЛОГИКА ПОДСВЕТКИ ИНТЕРЕСОВ
     const userInterests = currentUser.interests || [];
     document.querySelectorAll('input[name="profile-interest"]').forEach(cb => {
       cb.checked = userInterests.some(i => i.toLowerCase() === cb.value.toLowerCase());
@@ -187,47 +186,47 @@
   async function loadMyPosts() {
     const list = document.getElementById('my-posts-list');
     const userId = currentUser._id || currentUser.id;
-    list.innerHTML = "<p style='grid-column:1/-1; text-align:center;'>Загрузка...</p>";
+    list.innerHTML = "<p style='grid-column:1/-1; text-align:center;'>Loading...</p>";
     try {
       const res = await fetch(`/api/content/my-posts/${userId}`);
       const posts = await res.json();
       document.getElementById('post-count').innerText = `(${posts.length})`;
-      list.innerHTML = posts.length ? posts.map(p => renderPostCard(p, true)).join('') : "<p style='grid-column:1/-1; text-align:center;'>Нет постов</p>";
-    } catch (e) { list.innerHTML = "Ошибка загрузки"; }
+      list.innerHTML = posts.length ? posts.map(p => renderPostCard(p, true)).join('') : "<p style='grid-column:1/-1; text-align:center;'>No posts found</p>";
+    } catch (e) { list.innerHTML = "Load error"; }
   }
 
   async function loadBookmarks() {
     const list = document.getElementById('bookmarks-list');
     const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
     if (bookmarks.length === 0) {
-      list.innerHTML = "<p style='grid-column:1/-1; text-align:center; color:#86868b; padding:40px;'>Нет закладок 📑</p>";
+      list.innerHTML = "<p style='grid-column:1/-1; text-align:center; color:#86868b; padding:40px;'>No bookmarks yet 📑</p>";
       return;
     }
-    list.innerHTML = "<p style='grid-column:1/-1; text-align:center;'>Загрузка закладок...</p>";
+    list.innerHTML = "<p style='grid-column:1/-1; text-align:center;'>Loading bookmarks...</p>";
     try {
       const promises = bookmarks.map(id => fetch(`/api/content/single/${id}`).then(r => r.ok ? r.json() : null));
       const results = await Promise.all(promises);
       const posts = results.filter(p => p !== null);
-      list.innerHTML = posts.length ? posts.map(p => renderPostCard(p, false)).join('') : "<p style='grid-column:1/-1; text-align:center;'>Закладки пусты</p>";
-    } catch (e) { list.innerHTML = "Ошибка загрузки"; }
+      list.innerHTML = posts.length ? posts.map(p => renderPostCard(p, false)).join('') : "<p style='grid-column:1/-1; text-align:center;'>Bookmarks are empty</p>";
+    } catch (e) { list.innerHTML = "Load error"; }
   }
 
   async function loadLikedPosts(userId) {
     const list = document.getElementById('liked-posts-list');
-    list.innerHTML = "<p style='grid-column:1/-1; text-align:center;'>Загрузка...</p>";
+    list.innerHTML = "<p style='grid-column:1/-1; text-align:center;'>Loading...</p>";
     try {
       const res = await fetch(`/api/content/liked/${userId}`);
       const liked = await res.json();
-      list.innerHTML = liked.length ? liked.map(p => renderPostCard(p, false)).join('') : "<p style='grid-column:1/-1; text-align:center;'>Нет лайков ❤️</p>";
-    } catch (e) { list.innerHTML = "Ошибка загрузки лайков"; }
+      list.innerHTML = liked.length ? liked.map(p => renderPostCard(p, false)).join('') : "<p style='grid-column:1/-1; text-align:center;'>No likes yet</p>";
+    } catch (e) { list.innerHTML = "Load error"; }
   }
 
   async function deletePost(postId) {
-    if (!confirm('Удалить эту публикацию навсегда? 🗑️')) return;
+    if (!confirm('Delete this post permanently? 🗑️')) return;
     try {
       const res = await fetch(`/api/content/${postId}`, { method: 'DELETE' });
-      if (res.ok) { loadMyPosts(); } else { alert("Ошибка при удалении"); }
-    } catch (e) { alert("Ошибка сети"); }
+      if (res.ok) { loadMyPosts(); } else { alert("Error deleting post"); }
+    } catch (e) { alert("Network error"); }
   }
 
   function renderPostCard(post, isOwnPost) {
@@ -243,12 +242,12 @@
         </div>
         <div class="post-content">
           <div class="post-title" onclick="location.href='/post.html?id=${post._id}'">${post.title}</div>
-          <div class="post-actions">
+          <div class="actions-bar" style="margin-top: auto; padding-top: 10px; display: flex; justify-content: space-between; align-items: center;">
              <div style="font-size:13px; color:#86868b;">❤️ ${post.likes || 0}  💬 ${post.stats?.commentsCount || 0}</div>
              ${isOwnPost ? `
                <div>
-                 <button class="btn-edit-post" onclick="location.href='/create-post.html?edit=${post._id}'">Изменить</button>
-                 <button class="btn-delete-post" onclick="deletePost('${post._id}')">Удалить</button>
+                 <button class="btn-edit-post" onclick="location.href='/create-post.html?edit=${post._id}'">Edit</button>
+                 <button class="btn-delete-post" onclick="deletePost('${post._id}')">Delete</button>
                </div>
              ` : ''}
           </div>
@@ -257,14 +256,13 @@
     `;
   }
 
-  // ИСПРАВЛЕННАЯ ФУНКЦИЯ СОХРАНЕНИЯ ИНТЕРЕСОВ
   async function updateInterests() {
     const btn = document.getElementById('interest-save-btn');
     const selected = Array.from(document.querySelectorAll('input[name="profile-interest"]:checked'))
-            .map(cb => cb.value.toLowerCase()); // Приводим к нижнему регистру
+            .map(cb => cb.value.toLowerCase());
 
     const userId = currentUser._id || currentUser.id;
-    btn.innerText = "Сохранение...";
+    btn.innerText = "Saving...";
     try {
       const res = await fetch('/api/users/update', {
         method: 'PUT',
@@ -275,30 +273,29 @@
         const data = await res.json();
         localStorage.setItem('user', JSON.stringify(data.user));
         currentUser = data.user;
-        alert("Интересы обновлены! ✨");
+        alert("Interests updated!");
         renderData();
       }
-    } catch (e) { alert("Ошибка сохранения"); }
-    btn.innerText = "Сохранить предпочтения";
+    } catch (e) { alert("Save error"); }
+    btn.innerText = "Save Preferences";
   }
 
-  // ФУНКЦИЯ УДАЛЕНИЯ АККАУНТА
   async function deleteAccount() {
-    if (!confirm('ВНИМАНИЕ! Вы уверены, что хотите удалить свой аккаунт? Все ваши посты и данные будут удалены безвозвратно.')) return;
-    if (!confirm('ПОСЛЕДНЕЕ ПРЕДУПРЕЖДЕНИЕ: Точно удалить?')) return;
+    if (!confirm('WARNING! Are you sure you want to delete your account? All your posts and data will be permanently removed.')) return;
+    if (!confirm('FINAL WARNING: Delete account?')) return;
 
     const userId = currentUser._id || currentUser.id;
     try {
       const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
       if (res.ok) {
-        alert('Ваш аккаунт был успешно удален. До встречи!');
+        alert('Your account has been successfully deleted. Goodbye!');
         localStorage.clear();
         window.location.href = '/register.html';
       } else {
-        alert('Не удалось удалить аккаунт. Попробуйте позже.');
+        alert('Failed to delete account. Please try again later.');
       }
     } catch (e) {
-      alert('Ошибка при соединении с сервером.');
+      alert('Error connecting to server.');
     }
   }
 
@@ -324,17 +321,17 @@
     if (!cropper) return;
     cropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob(blob => {
       croppedBlob = blob;
-      alert("Фото готово к сохранению!");
+      alert("Photo is ready to save!");
     }, 'image/jpeg');
   }
 
   async function saveAvatarOnly() {
-    if(!croppedBlob) return alert("Пожалуйста, сначала выберите и обрежьте фото");
+    if(!croppedBlob) return alert("Please select and crop a photo first");
     const fd = new FormData();
     fd.append('avatar', croppedBlob);
     const userId = currentUser._id || currentUser.id;
     const btn = document.getElementById('save-avatar-btn');
-    btn.innerText = "Загрузка...";
+    btn.innerText = "Uploading...";
     try {
       const res = await fetch('/api/users/upload-avatar', {
         method: 'POST',
@@ -346,12 +343,12 @@
         localStorage.setItem('user', JSON.stringify(data.user));
         location.reload();
       } else {
-        alert("Ошибка при загрузке");
-        btn.innerText = "Сохранить аватар";
+        alert("Upload error");
+        btn.innerText = "Save Avatar";
       }
     } catch (e) {
-      alert("Ошибка сервера");
-      btn.innerText = "Сохранить аватар";
+      alert("Server error");
+      btn.innerText = "Save Avatar";
     }
   }
 

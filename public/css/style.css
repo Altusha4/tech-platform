@@ -106,10 +106,10 @@ h1 {
     right: 0;
     width: 10px;
     height: 10px;
-    background-color: #ff3b30; /* Ярко-красный */
+    background-color: #ff3b30;
     border-radius: 50%;
     border: 2px solid #fff;
-    display: none; /* Скрыто по умолчанию */
+    display: none;
 }
 
 .notif-card {
@@ -122,6 +122,6 @@ h1 {
 }
 
 .notif-card.unread {
-    border-left-color: #ff4081; /* Выделяем непрочитанные */
+    border-left-color: #ff4081;
     background: #fff0f5;
 }

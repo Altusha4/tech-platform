@@ -3,12 +3,12 @@ const mongoose = require('mongoose');
 const commentSchema = new mongoose.Schema({
     postId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Content', // Ссылка на модель поста
+        ref: 'Content',
         required: true
     },
     authorId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User', // Ссылка на модель пользователя
+        ref: 'User',
         required: true
     },
     text: {

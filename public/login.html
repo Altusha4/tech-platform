@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Вход | TechPlatform</title>
+    <title>Login | TechPlatform</title>
     <style>
         :root { --primary: #0071e3; --bg: #f5f5f7; --error: #ff3b30; }
         body {
@@ -57,7 +57,6 @@
             75% { transform: translateX(5px); }
         }
 
-        /* Спиннер загрузки */
         .spinner {
             display: none; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3);
             border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite;
@@ -69,22 +68,22 @@
 <body>
 
 <div class="login-card">
-    <h2>С возвращением</h2>
-    <p class="subtitle">Войдите, чтобы видеть свежие инновации</p>
+    <h2>Welcome Back</h2>
+    <p class="subtitle">Sign in to see the latest innovations</p>
 
     <div id="error-box" class="error-box"></div>
 
     <form id="login-form">
-        <input type="email" id="email" placeholder="Email" required autocomplete="email">
-        <input type="password" id="password" placeholder="Пароль" required autocomplete="current-password">
+        <input type="email" id="email" placeholder="Email Address" required autocomplete="email">
+        <input type="password" id="password" placeholder="Password" required autocomplete="current-password">
         <button type="submit" id="login-btn">
-            <span>Войти</span>
+            <span>Login</span>
             <div class="spinner" id="loader"></div>
         </button>
     </form>
 
     <p class="footer-text">
-        Нет аккаунта? <a href="/register.html">Создать аккаунт</a>
+        Don't have an account? <a href="/register.html">Create an Account</a>
     </p>
 </div>
 
@@ -94,7 +93,6 @@
     const loginBtn = document.getElementById('login-btn');
     const loader = document.getElementById('loader');
 
-    // Скрывать ошибку при начале ввода
     document.querySelectorAll('input').forEach(input => {
         input.oninput = () => { errorBox.style.display = 'none'; };
     });
@@ -105,9 +103,8 @@
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
 
-        // Состояние загрузки
         loginBtn.disabled = true;
-        loginBtn.querySelector('span').innerText = 'Проверка...';
+        loginBtn.querySelector('span').innerText = 'Authenticating...';
         loader.style.display = 'block';
 
         try {
@@ -120,25 +117,22 @@
             const data = await res.json();
 
             if (res.ok) {
-                // Успешный вход
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('user', JSON.stringify(data.user));
 
                 loginBtn.style.background = '#34c759';
-                loginBtn.querySelector('span').innerText = 'Успешно!';
+                loginBtn.querySelector('span').innerText = 'Success!';
 
                 setTimeout(() => { window.location.href = '/'; }, 800);
             } else {
-                // Ошибка
-                throw new Error(data.error || 'Неверные данные для входа');
+                throw new Error(data.error || 'Invalid credentials provided');
             }
         } catch (err) {
             errorBox.innerText = err.message;
             errorBox.style.display = 'block';
 
-            // Сброс кнопки
             loginBtn.disabled = false;
-            loginBtn.querySelector('span').innerText = 'Войти';
+            loginBtn.querySelector('span').innerText = 'Login';
             loader.style.display = 'none';
         }
     };

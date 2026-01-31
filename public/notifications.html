@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Уведомления | TechPlatform</title>
+  <title>Notifications | TechPlatform</title>
   <style>
     :root { --primary: #0071e3; --bg: #f5f5f7; }
     body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #1d1d1f; }
@@ -19,7 +19,6 @@
     }
     .notif-item:hover { background: #f9f9fb; transform: translateX(5px); }
 
-    /* Стиль для непрочитанных */
     .notif-item.unread { border-left: 4px solid var(--primary); background: #f0f7ff; }
 
     .notif-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; background: #eee; border: 1px solid #eee; }
@@ -35,22 +34,21 @@
 <body>
 
 <div class="notif-container">
-  <a href="/" class="back-link">← В ленту</a>
-  <h1>Уведомления <span id="unread-count-badge" style="display:none; background:#ff3b30; color:white; font-size:12px; padding:2px 8px; border-radius:10px;"></span></h1>
+  <a href="/" class="back-link">← Back to Feed</a>
+  <h1>Notifications <span id="unread-count-badge" style="display:none; background:#ff3b30; color:white; font-size:12px; padding:2px 8px; border-radius:10px;"></span></h1>
 
   <div id="notif-list" class="notif-list">
-    <p style="text-align: center; color: #888;">Загрузка инноваций...</p>
+    <p style="text-align: center; color: #888;">Loading notifications...</p>
   </div>
 </div>
 
 <script>
-  // 1. ФУНКЦИЯ СБРОСА КРАСНОЙ ТОЧКИ (PUT запрос)
   async function markNotificationsAsRead(userId) {
     try {
       await fetch(`/api/notifications/read-all/${userId}`, { method: 'PUT' });
-      console.log("Уведомления помечены как прочитанные");
+      console.log("Notifications marked as read");
     } catch (e) {
-      console.error("Ошибка при чтении уведомлений:", e);
+      console.error("Error marking notifications as read:", e);
     }
   }
 
@@ -59,7 +57,7 @@
     const userData = localStorage.getItem('user');
 
     if (!userData) {
-      list.innerHTML = `<div class="empty-state">Войдите в систему, чтобы видеть уведомления 🔐</div>`;
+      list.innerHTML = `<div class="empty-state">Please log in to see your notifications</div>`;
       return;
     }
 
@@ -68,21 +66,18 @@
 
     try {
       const res = await fetch(`/api/notifications/${userId}`);
-      if (!res.ok) throw new Error(`Ошибка сервера (${res.status})`);
+      if (!res.ok) throw new Error(`Server error (${res.status})`);
 
       const data = await res.json();
 
       if (!data || data.length === 0) {
-        list.innerHTML = `<div class="empty-state">Пока здесь тишина... 🤫</div>`;
+        list.innerHTML = `<div class="empty-state">It's quiet here for now...</div>`;
         return;
       }
-
-      // 2. ОТРИСОВКА (Исправлены поля под твой бэкенд: n.sender и n.postId)
       list.innerHTML = data.map(n => {
-        const sender = n.sender || { username: 'Пользователь', avatarUrl: '' };
+        const sender = n.sender || { username: 'User', avatarUrl: '' };
 
-        // Логика текста сообщения
-        let actionText = n.message || 'сделал что-то интересное';
+        let actionText = n.message || 'did something interesting';
 
         const avatar = sender.avatarUrl || `https://api.dicebear.com/7.x/big-ears/svg?seed=${sender.username}`;
         const postLink = n.postId ? `/post.html?id=${n.postId}` : '#';
@@ -93,13 +88,12 @@
             <img src="${avatar}" class="notif-avatar" onerror="this.src='https://api.dicebear.com/7.x/big-ears/svg?seed=fallback'">
             <div class="notif-content">
               <b>${sender.username}</b> ${actionText}
-              <div class="notif-time">${new Date(n.createdAt).toLocaleString('ru-RU')}</div>
+              <div class="notif-time">${new Date(n.createdAt).toLocaleString('en-US')}</div>
             </div>
           </a>
         `;
       }).join('');
 
-      // 3. ЕСЛИ ЕСТЬ НЕПРОЧИТАННЫЕ — СБРАСЫВАЕМ ИХ
       const hasUnread = data.some(n => n.read === false);
       if (hasUnread) {
         await markNotificationsAsRead(userId);
@@ -107,7 +101,7 @@
 
     } catch (e) {
       console.error("Notification Load Error:", e);
-      list.innerHTML = `<div class="error-msg">⚠️ Ошибка загрузки уведомлений<br><small>${e.message}</small></div>`;
+      list.innerHTML = `<div class="error-msg">Failed to load notifications<br><small>${e.message}</small></div>`;
     }
   }
 

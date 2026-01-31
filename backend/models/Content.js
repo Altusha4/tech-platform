@@ -50,7 +50,6 @@ const contentSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
-    // Добавлено для корректной работы роута закладок в server.js
     bookmarkedBy: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
@@ -68,16 +67,10 @@ const contentSchema = new mongoose.Schema({
     collection: 'content'
 });
 
-// --- ИНДЕКСАЦИЯ И ОПТИМИЗАЦИЯ (ТРЕБОВАНИЕ ПРОЕКТА) ---
-
-// 1. Глобальный текстовый индекс для поиска по ключевым словам
 contentSchema.index({ title: 'text', preview: 'text', tags: 'text' });
 
-// 2. Compound Index (Составной индекс) для фильтрации ленты по категориям и дате.
-// Ускоряет запросы типа: "Дай мне все посты из Programming, сначала новые"
 contentSchema.index({ category: 1, createdAt: -1 });
 
-// 3. Compound Index для связки автора и даты (ускоряет страницу "Мои посты")
 contentSchema.index({ authorId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Content', contentSchema);

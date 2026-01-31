@@ -6,7 +6,6 @@ const FollowSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
-// Уникальный индекс, чтобы нельзя было подписаться дважды
 FollowSchema.index({ follower: 1, following: 1 }, { unique: true });
 
 module.exports = mongoose.model('Follow', FollowSchema);

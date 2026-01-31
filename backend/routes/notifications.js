@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const Notification = require('../models/Notification');
 
-// Получить все уведомления пользователя
 router.get('/:userId', async (req, res) => {
     try {
         const notifications = await Notification.find({ recipient: req.params.userId })
@@ -16,10 +15,16 @@ router.get('/:userId', async (req, res) => {
     }
 });
 
-// Отметить как прочитанные
 router.put('/read-all/:userId', async (req, res) => {
-    await Notification.updateMany({ recipient: req.params.userId }, { read: true });
-    res.json({ message: "Обновлено" });
+    try {
+        await Notification.updateMany(
+            { recipient: req.params.userId },
+            { read: true }
+        );
+        res.json({ message: "Notifications updated successfully" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 module.exports = router;

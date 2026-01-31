@@ -26,26 +26,24 @@ const userSchema = new mongoose.Schema({
     },
     interests: [{
         type: String,
-        lowercase: true // Чтобы "AI" и "ai" были одним тегом
+        lowercase: true
     }],
     avatarUrl: {
         type: String,
         default: 'https://api.dicebear.com/7.x/big-ears/svg?seed=Lucky'
     },
-    // Социальные связи (Referenced Data Model)
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    // Сохраненные посты (Закладки)
+
     bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Content' }],
 
-    // Вложенные данные (Embedded Data Model)
     stats: {
         postsCount: { type: Number, default: 0 },
         totalLikes: { type: Number, default: 0 },
         totalViews: { type: Number, default: 0 }
     }
 }, {
-    timestamps: true, // Автоматически создает createdAt и updatedAt
+    timestamps: true,
     collection: 'users'
 });
 

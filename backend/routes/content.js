@@ -3,7 +3,6 @@ const router = express.Router();
 const Content = require("../models/Content");
 const Notification = require("../models/Notification");
 
-// --- 1. ПОЛУЧЕНИЕ ЛЕНТЫ ---
 router.get("/", async (req, res) => {
     try {
         const { category, authorId } = req.query;
@@ -20,29 +19,24 @@ router.get("/", async (req, res) => {
     }
 });
 
-// --- 2. СОЗДАНИЕ ПОСТА (JSON + Base64) ---
 router.post("/", async (req, res) => {
     try {
-        // Теперь все данные гарантированно сидят в req.body
         const { title, body, preview, tags, category, authorId, type, image } = req.body;
 
-        // Жесткая проверка ID
         if (!authorId || authorId === "undefined") {
-            return res.status(400).json({ error: "Ошибка: ID автора (authorId) обязателен." });
+            return res.status(400).json({ error: "Error: Author ID (authorId) is required." });
         }
 
-        // Обработка тегов (теперь они уже приходят массивом из JSON)
         const parsedTags = Array.isArray(tags) ? tags : [];
 
         const newPost = new Content({
-            title: title ? title.trim() : "Без названия",
+            title: title ? title.trim() : "Untitled",
             body: body ? body.trim() : "",
             preview: preview ? preview.trim() : "",
             tags: parsedTags,
             category: category || "Other",
             authorId: authorId,
             type: type || "post",
-            // image здесь — это строка Base64, которую мы сохраняем как ссылку
             mediaUrl: image || null,
             stats: { views: 0, commentsCount: 0 }
         });
@@ -50,17 +44,16 @@ router.post("/", async (req, res) => {
         const savedPost = await newPost.save();
         res.status(201).json(savedPost);
     } catch (err) {
-        console.error("Ошибка при сохранении через JSON:", err);
+        console.error("JSON Save Error:", err);
         res.status(400).json({ error: err.message });
     }
 });
 
-// --- 3. ЛАЙК + УВЕДОМЛЕНИЕ ---
 router.post("/:id/like", async (req, res) => {
     try {
         const { userId } = req.body;
         const post = await Content.findById(req.params.id);
-        if (!post) return res.status(404).json({ error: "Пост не найден" });
+        if (!post) return res.status(404).json({ error: "Post not found" });
 
         const isLiked = post.likedBy.includes(userId);
         if (isLiked) {

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Регистрация | TechPlatform</title>
+  <title>Registration | TechPlatform</title>
   <style>
     :root { --primary: #0071e3; --primary-dark: #0077ed; --bg: #f5f5f7; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: var(--bg); margin: 0; }
@@ -28,9 +28,7 @@
       border-radius: 10px; transition: 0.2s;
     }
     .interest-label:hover { border-color: var(--primary); }
-    .interest-label has(:checked) { background: rgba(0,113,227,0.05); border-color: var(--primary); }
 
-    /* Для старых браузеров вместо has() */
     .interest-label.active { background: rgba(0,113,227,0.05); border-color: var(--primary); color: var(--primary); }
 
     button {
@@ -43,7 +41,6 @@
     .login-link { margin-top: 25px; display: block; color: var(--primary); text-decoration: none; font-size: 14px; font-weight: 500; }
     .login-link:hover { text-decoration: underline; }
 
-    /* Анимация загрузки */
     .spinner { display: none; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite; position: absolute; right: 20px; }
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
@@ -51,55 +48,54 @@
 <body>
 
 <div class="login-card">
-  <h2>Присоединяйтесь</h2>
-  <p class="subtitle">Станьте частью сообщества инноваторов</p>
+  <h2>Join Us</h2>
+  <p class="subtitle">Become part of the innovators' community</p>
 
   <form id="reg-form">
-    <input type="text" id="username" placeholder="Имя пользователя" required minlength="3">
-    <input type="email" id="email" placeholder="Email (напр. user@tech.kz)" required>
-    <input type="password" id="password" placeholder="Пароль (мин. 6 символов)" required minlength="6">
+    <input type="text" id="username" placeholder="Username" required minlength="3">
+    <input type="email" id="email" placeholder="Email (e.g. user@tech.kz)" required>
+    <input type="password" id="password" placeholder="Password (min. 6 characters)" required minlength="6">
 
     <div class="interests-box">
-      <p>Что вам интересно? 🎯</p>
+      <p>What are you interested in?</p>
       <div class="interests-grid">
         <label class="interest-label">
           <input type="checkbox" name="interest" value="programming" hidden>
-          <span>💻 Программирование</span>
+          <span>Programming</span>
         </label>
         <label class="interest-label">
           <input type="checkbox" name="interest" value="design" hidden>
-          <span>🎨 Дизайн & UX</span>
+          <span>Design & UX</span>
         </label>
         <label class="interest-label">
           <input type="checkbox" name="interest" value="gadgets" hidden>
-          <span>📱 Гаджеты / Apple</span>
+          <span>Gadgets / Apple</span>
         </label>
         <label class="interest-label">
           <input type="checkbox" name="interest" value="mongodb" hidden>
-          <span>💾 Базы данных</span>
+          <span>Databases</span>
         </label>
         <label class="interest-label">
           <input type="checkbox" name="interest" value="node" hidden>
-          <span>⚙️ Backend / Node</span>
+          <span>⚙Backend / Node</span>
         </label>
         <label class="interest-label">
           <input type="checkbox" name="interest" value="future" hidden>
-          <span>🚀 Будущее & AI</span>
+          <span>Future & AI</span>
         </label>
       </div>
     </div>
 
     <button type="submit" id="submit-btn">
-      <span>Зарегистрироваться</span>
+      <span>Register</span>
       <div class="spinner" id="btn-spinner"></div>
     </button>
   </form>
 
-  <a href="/login.html" class="login-link">Уже есть аккаунт? Войти в систему</a>
+  <a href="/login.html" class="login-link">Already have an account? Sign in</a>
 </div>
 
 <script>
-  // Визуальный эффект для чекбоксов
   document.querySelectorAll('.interest-label input').forEach(input => {
     input.addEventListener('change', (e) => {
       e.target.parentElement.classList.toggle('active', e.target.checked);
@@ -113,7 +109,6 @@
     const spinner = document.getElementById('btn-spinner');
     const username = document.getElementById('username').value.trim();
 
-    // 1. Формируем аватар на основе имени (DiceBear Big Ears - мультяшные животные)
     const avatarUrl = `https://api.dicebear.com/7.x/big-ears/svg?seed=${username}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf`;
 
     const checkedInterests = Array.from(document.querySelectorAll('input[name="interest"]:checked'))
@@ -124,12 +119,11 @@
       email: document.getElementById('email').value.trim(),
       password: document.getElementById('password').value,
       interests: checkedInterests,
-      avatarUrl: avatarUrl // Отправляем готовый аватар
+      avatarUrl: avatarUrl
     };
 
-    // Состояние загрузки
     btn.disabled = true;
-    btn.querySelector('span').innerText = 'Создаем аккаунт...';
+    btn.querySelector('span').innerText = 'Creating account...';
     spinner.style.display = 'block';
 
     try {
@@ -142,20 +136,18 @@
       const data = await res.json();
 
       if (res.ok) {
-        // Успех
-        btn.style.background = '#34c759'; // Зеленый цвет успеха
-        btn.querySelector('span').innerText = 'Готово! Входим...';
+        btn.style.background = '#34c759'; // Success green
+        btn.querySelector('span').innerText = 'Done! Redirecting...';
         setTimeout(() => {
           window.location.href = '/login.html';
         }, 1500);
       } else {
-        throw new Error(data.error || 'Ошибка регистрации');
+        throw new Error(data.error || 'Registration failed');
       }
     } catch (err) {
       alert(err.message);
-      // Сброс состояния кнопки
       btn.disabled = false;
-      btn.querySelector('span').innerText = 'Зарегистрироваться';
+      btn.querySelector('span').innerText = 'Register';
       spinner.style.display = 'none';
     }
   };

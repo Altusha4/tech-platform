@@ -4,7 +4,6 @@ const publishBtn = document.getElementById("publishBtn");
 const titleInput = document.getElementById("title");
 const descriptionInput = document.getElementById("description");
 
-// load posts
 async function loadPosts() {
     const res = await fetch("/api/content");
     const posts = await res.json();
@@ -24,7 +23,6 @@ async function loadPosts() {
     });
 }
 
-// create post
 publishBtn.addEventListener("click", async () => {
     const title = titleInput.value.trim();
     const description = descriptionInput.value.trim();
@@ -46,5 +44,4 @@ publishBtn.addEventListener("click", async () => {
     loadPosts();
 });
 
-// init
 loadPosts();

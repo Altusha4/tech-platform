@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tech Platform - Инновационная Лента</title>
+    <title>Tech Platform - Innovation Feed</title>
     <style>
         :root { --primary: #0071e3; --bg: #f5f5f7; --card-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); margin: 0; color: #1d1d1f; overflow-y: scroll; }
@@ -94,25 +94,25 @@
 
 <div class="container">
     <div class="feed-tabs">
-        <button class="feed-tab active" id="tab-all" onclick="setFeedType('all')">Для вас</button>
-        <button class="feed-tab" id="tab-following" onclick="setFeedType('following')">Подписки 👥</button>
-        <button class="feed-tab" id="tab-my-posts" onclick="setFeedType('my-posts')">Мои посты 📄</button>
-        <button class="feed-tab" id="tab-liked" onclick="setFeedType('liked')">Лайки ❤️</button>
+        <button class="feed-tab active" id="tab-all" onclick="setFeedType('all')">For You</button>
+        <button class="feed-tab" id="tab-following" onclick="setFeedType('following')">Following</button>
+        <button class="feed-tab" id="tab-my-posts" onclick="setFeedType('my-posts')">My Posts</button>
+        <button class="feed-tab" id="tab-liked" onclick="setFeedType('liked')">Liked</button>
     </div>
 
     <div class="search-container">
-        <input type="text" id="global-search" class="global-search" oninput="handleSearch()" placeholder="🔍 Поиск инноваций...">
+        <input type="text" id="global-search" class="global-search" oninput="handleSearch()" placeholder="Search Innovations...">
     </div>
 
     <div class="main-layout">
         <div class="content-area">
             <div class="post-stub" onclick="window.location.href='/create-post.html'">
                 <div id="mini-avatar-placeholder"></div>
-                <div class="post-stub-input">Поделитесь инновацией...</div>
+                <div class="post-stub-input">Share an innovation...</div>
             </div>
 
             <div class="category-bar">
-                <button class="cat-btn active" id="cat-all" onclick="setCategory('All', this)">Все</button>
+                <button class="cat-btn active" id="cat-all" onclick="setCategory('All', this)">All</button>
                 <button class="cat-btn" onclick="setCategory('Programming', this)">Programming</button>
                 <button class="cat-btn" onclick="setCategory('Gadgets', this)">Gadgets</button>
                 <button class="cat-btn" onclick="setCategory('Design', this)">Design</button>
@@ -128,7 +128,7 @@
 
         <aside class="sidebar">
             <div class="sidebar-box">
-                <h3>Трендовые теги ✨</h3>
+                <h3>Trending Tags ✨</h3>
                 <div id="trending-tags"></div>
             </div>
         </aside>
@@ -171,7 +171,7 @@
             <a href="/profile.html" style="text-decoration:none; color:inherit; font-weight:600; display:flex; align-items:center; gap:8px;">
                 ${avatarHtml} ${user.username}
             </a>
-            <button onclick="logout()" style="background:none; border:1px solid #d2d2d7; padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px; margin-left:10px;">Выход</button>
+            <button onclick="logout()" style="background:none; border:1px solid #d2d2d7; padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px; margin-left:10px;">Logout</button>
         `;
     }
 
@@ -214,16 +214,14 @@
         fetchFeed();
     }
 
-    // УМНАЯ ЛЕНТА: если "Для вас", отправляем интересы на сервер
     async function fetchFeed() {
         const feedEl = document.getElementById('feed');
-        feedEl.innerHTML = '<div style="text-align:center; padding:50px;">Загрузка инноваций...</div>';
+        feedEl.innerHTML = '<div style="text-align:center; padding:50px;">Loading innovations...</div>';
         try {
             const userId = currentUser._id || currentUser.id;
             let url;
 
             if (currentFeedType === 'all') {
-                // Если юзер на общей ленте, учитываем его интересы
                 const interests = currentUser.interests && currentUser.interests.length > 0
                     ? currentUser.interests.join(',').toLowerCase()
                     : '';
@@ -242,7 +240,7 @@
             updateTrendingTags(allPosts);
         } catch (e) {
             console.error("Feed Error:", e);
-            feedEl.innerHTML = "<div style='text-align:center; color:red;'>Ошибка загрузки контента.</div>";
+            feedEl.innerHTML = "<div style='text-align:center; color:red;'>Error loading content.</div>";
         }
     }
 
@@ -251,7 +249,7 @@
         const userId = currentUser?._id || currentUser?.id;
 
         if (!data || !data.length) {
-            feed.innerHTML = `<div style="text-align:center; padding:50px; color:#86868b;">Ничего не найдено</div>`;
+            feed.innerHTML = `<div style="text-align:center; padding:50px; color:#86868b;">No results found</div>`;
             return;
         }
 
@@ -265,21 +263,21 @@
             return `
             <div class="card" id="post-${item._id}">
                 <div style="display:flex; justify-content:space-between; align-items:start;">
-                    <span class="type-tag">${item.category || 'Общее'}</span>
-                    ${isOwner ? `<button onclick="deletePost('${item._id}')" style="background:none; border:none; color:#ff3b30; cursor:pointer; font-size:12px;">Удалить</button>` : ''}
+                    <span class="type-tag">${item.category || 'General'}</span>
+                    ${isOwner ? `<button onclick="deletePost('${item._id}')" style="background:none; border:none; color:#ff3b30; cursor:pointer; font-size:12px;">Delete</button>` : ''}
                 </div>
                 <h3 onclick="location.href='/post.html?id=${item._id}'" style="cursor:pointer;">${item.title}</h3>
 
                 <div onclick="location.href='/post.html?id=${item._id}'" style="cursor:pointer">
                     ${item.mediaUrl && !ytId ? `<div class="media-container"><img src="${item.mediaUrl}"></div>` :
                 (ytId ? `<div class="media-container"><img src="https://img.youtube.com/vi/${ytId}/maxresdefault.jpg"><div class="play-overlay">▶</div></div>` :
-                    `<p style="color:#555; line-height:1.5;">${item.preview || 'Нажмите, чтобы прочитать полностью...'}</p>`)}
+                    `<p style="color:#555; line-height:1.5;">${item.preview || 'Click to read more...'}</p>`)}
                 </div>
 
                 <div class="actions-bar">
                     <div class="author-wrapper" onmouseenter="showMiniProfile('${authorId}', '${item._id}')">
                         <span style="font-size:13px; color:#86868b; cursor:pointer;">👤 <b>${author.username || 'User'}</b></span>
-                        <div id="hover-card-${item._id}" class="hover-card">Загрузка...</div>
+                        <div id="hover-card-${item._id}" class="hover-card">Loading...</div>
                     </div>
 
                     <div style="display:flex; gap:8px;">
@@ -295,7 +293,7 @@
                 <div id="comments-block-${item._id}" class="comments-section">
                     <div id="comments-list-${item._id}" style="max-height: 200px; overflow-y: auto;"></div>
                     <div class="comment-input-area">
-                        <input type="text" id="input-${item._id}" class="comment-input" placeholder="Ваш комментарий...">
+                        <input type="text" id="input-${item._id}" class="comment-input" placeholder="Your comment...">
                         <button onclick="addCommentMain('${item._id}')" class="comment-send-btn">🚀</button>
                     </div>
                 </div>
@@ -306,7 +304,7 @@
     async function showMiniProfile(authorId, postId) {
         const card = document.getElementById(`hover-card-${postId}`);
         const me = currentUser._id || currentUser.id;
-        if (!card || card.innerHTML !== 'Загрузка...') return;
+        if (!card || card.innerHTML !== 'Loading...') return;
         try {
             const [userRes, followRes] = await Promise.all([
                 fetch(`/api/users/mini-profile/${authorId}`),
@@ -319,16 +317,16 @@
                     <img src="${user.avatarUrl || 'https://api.dicebear.com/7.x/big-ears/svg?seed='+user.username}" class="hc-avatar">
                     <div>
                         <div style="font-weight:700;">${user.username}</div>
-                        <div style="font-size:11px; color:#86868b;">Инноватор</div>
+                        <div style="font-size:11px; color:#86868b;">Innovator</div>
                     </div>
                 </div>
                 <div class="hc-stats">
-                    <div class="hc-stat-item"><b>${user.postsCount || 0}</b> постов</div>
-                    <div class="hc-stat-item"><b>${user.followersCount || 0}</b> подп.</div>
+                    <div class="hc-stat-item"><b>${user.postsCount || 0}</b> posts</div>
+                    <div class="hc-stat-item"><b>${user.followersCount || 0}</b> followers</div>
                 </div>
-                ${authorId.toString() !== me.toString() ? `<button onclick="handleFollowHC('${authorId}', '${postId}')" class="btn-hc-follow ${follow.following ? 'active' : ''}">${follow.following ? 'Отписаться' : 'Подписаться'}</button>` : ''}
+                ${authorId.toString() !== me.toString() ? `<button onclick="handleFollowHC('${authorId}', '${postId}')" class="btn-hc-follow ${follow.following ? 'active' : ''}">${follow.following ? 'Unfollow' : 'Follow'}</button>` : ''}
             `;
-        } catch (e) { card.innerHTML = "Ошибка данных"; }
+        } catch (e) { card.innerHTML = "Data error"; }
     }
 
     async function handleFollowHC(targetId, postId) {
@@ -341,7 +339,7 @@
             });
             if (res.ok) {
                 const hcCard = document.getElementById(`hover-card-${postId}`);
-                if (hcCard) { hcCard.innerHTML = "Загрузка..."; showMiniProfile(targetId, postId); }
+                if (hcCard) { hcCard.innerHTML = "Loading..."; showMiniProfile(targetId, postId); }
             }
         } catch (e) { console.error(e); }
     }
@@ -382,7 +380,7 @@
                     <div class="comment-bubble">
                         <b style="font-size:12px;">${c.authorId?.username || 'User'}:</b> ${c.text}
                     </div>
-                </div>`).join('') : '<div style="font-size:12px; color:#888; padding:10px 0;">Пока нет комментариев.</div>';
+                </div>`).join('') : '<div style="font-size:12px; color:#888; padding:10px 0;">No comments yet.</div>';
             list.scrollTop = list.scrollHeight;
         } catch (e) { console.error(e); }
     }
@@ -425,7 +423,7 @@
     }
 
     async function deletePost(id) {
-        if(!confirm("Удалить этот пост навсегда?")) return;
+        if(!confirm("Delete this post permanently?")) return;
         try {
             const res = await fetch(`/api/content/${id}`, { method: 'DELETE' });
             if(res.ok) fetchFeed();
