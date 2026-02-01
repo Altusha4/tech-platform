@@ -2,6 +2,30 @@ const express = require('express');
 const router = express.Router();
 const Notification = require('../models/Notification');
 
+/**
+ * @swagger
+ * tags:
+ *   name: Notifications
+ *   description: User notifications
+ */
+
+
+/**
+ * @swagger
+ * /notifications/{userId}:
+ *   get:
+ *     summary: Get user notifications
+ *     tags: [Notifications]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Notifications list
+ */
 router.get('/:userId', async (req, res) => {
     try {
         const notifications = await Notification.find({ recipient: req.params.userId })
@@ -15,6 +39,22 @@ router.get('/:userId', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /notifications/read-all/{userId}:
+ *   put:
+ *     summary: Mark all notifications as read
+ *     tags: [Notifications]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Notifications marked as read
+ */
 router.put('/read-all/:userId', async (req, res) => {
     try {
         await Notification.updateMany(

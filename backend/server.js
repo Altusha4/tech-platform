@@ -5,6 +5,8 @@ const cors = require('cors');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./swagger');
 
 // Импорт моделей
 const authRoutes = require('./routes/auth');
@@ -15,6 +17,9 @@ const Follow = require('./models/Follow');
 const Comment = require('./models/Comment');
 
 const app = express();
+
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 const publicPath = path.join(__dirname, '..', 'public');
 
 // --- НАСТРОЙКА CORS И ПАРСЕРОВ ---
@@ -369,5 +374,6 @@ app.use(express.static(publicPath));
 mongoose.connect(process.env.MONGO_URI)
     .then(() => {
         app.listen(3000, () => console.log(`📡 Server running at http://localhost:3000`));
+        console.log('Swagger docs on http://localhost:3000/api-docs');
     })
     .catch(err => console.error("Database error:", err));
