@@ -3,6 +3,33 @@ const router = express.Router();
 const Content = require("../models/Content");
 const Notification = require("../models/Notification");
 
+/**
+ * @swagger
+ * tags:
+ *   name: Content
+ *   description: Posts and content management
+ */
+
+
+/**
+ * @swagger
+ * /content:
+ *   get:
+ *     summary: Get all posts
+ *     tags: [Content]
+ *     parameters:
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: authorId
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of posts
+ */
 router.get("/", async (req, res) => {
     try {
         const { category, authorId } = req.query;
@@ -19,6 +46,37 @@ router.get("/", async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /content:
+ *   post:
+ *     summary: Create new post
+ *     tags: [Content]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - authorId
+ *             properties:
+ *               title:
+ *                 type: string
+ *               body:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               authorId:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Post created
+ */
 router.post("/", async (req, res) => {
     try {
         const { title, body, preview, tags, category, authorId, type, image } = req.body;
@@ -49,6 +107,31 @@ router.post("/", async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /content/{id}/like:
+ *   post:
+ *     summary: Like or unlike post
+ *     tags: [Content]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Like status updated
+ */
 router.post("/:id/like", async (req, res) => {
     try {
         const { userId } = req.body;

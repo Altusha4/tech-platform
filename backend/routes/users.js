@@ -2,6 +2,40 @@ const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
 
+/**
+ * @swagger
+ * tags:
+ *   name: Users
+ *   description: User profile management
+ */
+
+/**
+ * @swagger
+ * /users/{id}/interests:
+ *   patch:
+ *     summary: Update user interests
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               interests:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Interests updated
+ */
 router.patch("/:id/interests", async (req, res) => {
     try {
         const { interests } = req.body;

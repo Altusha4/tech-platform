@@ -4,6 +4,31 @@ const Comment = require("../models/Comment");
 const Content = require("../models/Content");
 const Notification = require("../models/Notification");
 
+/**
+ * @swagger
+ * tags:
+ *   name: Comments
+ *   description: Comments management
+ */
+
+/**
+ * @swagger
+ * /comments/{postId}:
+ *   get:
+ *     summary: Get comments for a post
+ *     tags: [Comments]
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of comments
+ *       500:
+ *         description: Server error
+ */
 router.get("/:postId", async (req, res) => {
     try {
         const comments = await Comment.find({ postId: req.params.postId })
@@ -15,6 +40,35 @@ router.get("/:postId", async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /comments:
+ *   post:
+ *     summary: Add comment to a post
+ *     tags: [Comments]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - postId
+ *               - userId
+ *               - text
+ *             properties:
+ *               postId:
+ *                 type: string
+ *               userId:
+ *                 type: string
+ *               text:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Comment created
+ *       400:
+ *         description: Invalid input
+ */
 router.post("/", async (req, res) => {
     try {
         const { postId, userId, text } = req.body;
@@ -50,6 +104,24 @@ router.post("/", async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /comments/{id}:
+ *   delete:
+ *     summary: Delete comment
+ *     tags: [Comments]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Comment deleted
+ *       404:
+ *         description: Comment not found
+ */
 router.delete("/:id", async (req, res) => {
     try {
         const comment = await Comment.findById(req.params.id);

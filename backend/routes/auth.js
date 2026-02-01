@@ -4,6 +4,50 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+/**
+ * @swagger
+ * tags:
+ *   name: Auth
+ *   description: Authentication and authorization
+ */
+
+
+/**
+ * @swagger
+ * /register:
+ *   post:
+ *     summary: Register new user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - email
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               interests:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               avatarUrl:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Registration successful
+ *       400:
+ *         description: User already exists
+ */
+
 router.post('/register', async (req, res) => {
     try {
         const { username, email, password, interests, avatarUrl } = req.body;
@@ -39,6 +83,33 @@ router.post('/register', async (req, res) => {
         res.status(500).json({ error: "Internal server error during account creation" });
     }
 });
+
+/**
+ * @swagger
+ * /login:
+ *   post:
+ *     summary: Login user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: JWT token and user info
+ *       401:
+ *         description: Invalid credentials
+ */
 
 router.post('/login', async (req, res) => {
     try {
