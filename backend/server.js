@@ -72,6 +72,17 @@ const deleteLocalFile = (relativeUrl) => {
     }
 };
 
+/**
+ * @swagger
+ * /stats/categories:
+ *   get:
+ *     summary: Get content statistics by categories
+ *     tags: [Stats]
+ *     responses:
+ *       200:
+ *         description: Category statistics
+ */
+
 // --- 0. АГРЕГАЦИЯ (ТРЕБОВАНИЕ ДЛЯ 2 СТУДЕНТОВ) ---
 app.get('/api/stats/categories', async (req, res) => {
     try {
@@ -97,6 +108,27 @@ app.get('/api/stats/categories', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+/**
+ * @swagger
+ * /users/upload-avatar:
+ *   post:
+ *     summary: Upload user avatar
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               avatar:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Avatar uploaded
+ */
+
 // --- 1. ПОЛЬЗОВАТЕЛИ ---
 app.post('/api/users/upload-avatar', uploadAvatar.single('avatar'), async (req, res) => {
     try {
@@ -110,6 +142,30 @@ app.post('/api/users/upload-avatar', uploadAvatar.single('avatar'), async (req, 
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+/**
+ * @swagger
+ * /users/update:
+ *   put:
+ *     summary: Update user profile
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userId:
+ *                 type: string
+ *               interests:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated
+ */
+
 app.put('/api/users/update', async (req, res) => {
     try {
         const { userId, interests } = req.body;
@@ -117,6 +173,23 @@ app.put('/api/users/update', async (req, res) => {
         res.json({ message: "Профиль обновлен!", user: updatedUser });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+/**
+ * @swagger
+ * /users/mini-profile/{userId}:
+ *   get:
+ *     summary: Get mini user profile
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Mini profile data
+ */
 
 app.get('/api/users/mini-profile/:userId', async (req, res) => {
     try {
@@ -165,6 +238,23 @@ app.post('/api/content', uploadContent.single('mediaFile'), async (req, res) => 
 });
 
 // UPDATE (Исправлено: добавлен роут обновления)
+/**
+ * @swagger
+ * /content/{id}:
+ *   put:
+ *     summary: Update post
+ *     tags: [Content]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Post updated
+ */
+
 app.put('/api/content/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -190,6 +280,23 @@ app.put('/api/content/:id', async (req, res) => {
 });
 
 // READ SINGLE
+/**
+ * @swagger
+ * /content/single/{id}:
+ *   get:
+ *     summary: Get single post and increase views
+ *     tags: [Content]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Post data
+ */
+
 app.get('/api/content/single/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -202,6 +309,23 @@ app.get('/api/content/single/:id', async (req, res) => {
 });
 
 // DELETE
+/**
+ * @swagger
+ * /content/{id}:
+ *   delete:
+ *     summary: Delete post
+ *     tags: [Content]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Post deleted
+ */
+
 app.delete('/api/content/:id', async (req, res) => {
     try {
         const post = await Content.findById(req.params.id);
@@ -237,6 +361,20 @@ app.get('/api/content', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+/**
+ * @swagger
+ * /content/following/{userId}:
+ *   get:
+ *     summary: Get feed from followed users
+ *     tags: [Content]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ */
+
 app.get('/api/content/following/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
@@ -248,12 +386,40 @@ app.get('/api/content/following/:userId', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+/**
+ * @swagger
+ * /content/my-posts/{userId}:
+ *   get:
+ *     summary: Get user posts
+ *     tags: [Content]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ */
+
 app.get('/api/content/my-posts/:userId', async (req, res) => {
     try {
         let posts = await Content.find({ authorId: req.params.userId }).populate('authorId', 'username avatarUrl').sort({ createdAt: -1 }).lean();
         res.json(await populateStats(posts));
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+/**
+ * @swagger
+ * /content/liked/{userId}:
+ *   get:
+ *     summary: Get liked posts
+ *     tags: [Content]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ */
 
 app.get('/api/content/liked/:userId', async (req, res) => {
     try {
@@ -263,6 +429,25 @@ app.get('/api/content/liked/:userId', async (req, res) => {
 });
 
 // --- 4. ПОДПИСКИ ---
+/**
+ * @swagger
+ * /follow:
+ *   post:
+ *     summary: Follow or unfollow user
+ *     tags: [Follow]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               followerId:
+ *                 type: string
+ *               followingId:
+ *                 type: string
+ */
+
 app.post('/api/follow', async (req, res) => {
     try {
         const { followerId, followingId } = req.body;
@@ -274,12 +459,29 @@ app.post('/api/follow', async (req, res) => {
         } else {
             await Follow.create({ follower: followerId, following: followingId });
             await Notification.create({
-                recipient: followingId, sender: followerId, type: 'follow', message: 'подписался(ась) на вас 👤'
+                recipient: followingId, sender: followerId, type: 'follow', message: 'started following you 👤'
             });
             res.json({ following: true });
         }
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+/**
+ * @swagger
+ * /follow/status:
+ *   get:
+ *     summary: Get follow status
+ *     tags: [Follow]
+ *     parameters:
+ *       - in: query
+ *         name: followerId
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: followingId
+ *         schema:
+ *           type: string
+ */
 
 app.get('/api/follow/status', async (req, res) => {
     try {
@@ -301,7 +503,7 @@ app.post('/api/content/:id/like', async (req, res) => {
         const updatedPost = await Content.findByIdAndUpdate(req.params.id, update, { new: true });
         if (!isLiked && post.authorId.toString() !== userId.toString()) {
             await Notification.create({
-                recipient: post.authorId, sender: userId, type: 'like', message: `лайкнул(а) ваш пост`, postId: post._id
+                recipient: post.authorId, sender: userId, type: 'like', message: `liked your post`, postId: post._id
             });
         }
         res.json({ success: true, likes: updatedPost.likes, isLiked: !isLiked });
@@ -315,7 +517,7 @@ app.post('/api/comments', async (req, res) => {
         const post = await Content.findByIdAndUpdate(postId, { $inc: { 'stats.commentsCount': 1 } });
         if (post && post.authorId.toString() !== userId.toString()) {
             await Notification.create({
-                recipient: post.authorId, sender: userId, type: 'comment', message: `прокомментировал(а) ваш пост`, postId: post._id
+                recipient: post.authorId, sender: userId, type: 'comment', message: `commented your post`, postId: post._id
             });
         }
         const populated = await comment.populate('authorId', 'username avatarUrl');
