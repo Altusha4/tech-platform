@@ -1,0 +1,43 @@
+groups:
+  - name: techplatform_alerts
+    rules:
+
+      - alert: HighCPUWarning
+        expr: >
+          (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))) * 100 > 70
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU is {{ printf \"%.1f\" $value }}% (threshold: 70%)"
+
+      - alert: HighCPUCritical
+        expr: >
+          (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))) * 100 > 90
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRITICAL: CPU saturation on TechPlatform"
+          description: "CPU is {{ printf \"%.1f\" $value }}% (threshold: 90%). SLO breach imminent!"
+
+      - alert: LowMemoryWarning
+        expr: >
+          (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 20
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low memory on TechPlatform"
+          description: "Only {{ printf \"%.1f\" $value }}% memory available"
+
+      - alert: LowMemoryCritical
+        expr: >
+          (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 5
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRITICAL: Memory exhaustion on TechPlatform"
+          description: "Only {{ printf \"%.1f\" $value }}% memory left. OOM kill likely!"
