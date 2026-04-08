@@ -1,0 +1,273 @@
+{
+  "title": "TechPlatform — SRE Dashboard",
+  "uid": "techplatform-sre",
+  "tags": ["sre", "techplatform", "golden-signals"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "SLO 1 — Availability (CPU idle %)",
+      "type": "gauge",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 6 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 95 },
+              { "color": "green", "value": 99 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100",
+          "legendFormat": "Availability %",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdMarkers": true
+      }
+    },
+    {
+      "id": 2,
+      "title": "SLO 2 — Memory Available %",
+      "type": "gauge",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 6 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 20 },
+              { "color": "green", "value": 40 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "(node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100",
+          "legendFormat": "Memory Available %",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdMarkers": true
+      }
+    },
+    {
+      "id": 3,
+      "title": "Error Budget Remaining (SLO 99.5%)",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 6 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "m",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 60 },
+              { "color": "green", "value": 120 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "216 - clamp_min((1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[1h]))) * 60, 0)",
+          "legendFormat": "Budget left (min)",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Active Alerts",
+      "type": "stat",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 6 },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 2 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "count(ALERTS{alertstate=\"firing\"}) or vector(0)",
+          "legendFormat": "Firing",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Golden Signal 1 — Latency (CPU load %)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": { "lineWidth": 2, "fillOpacity": 15 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "(1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[1m]))) * 100",
+          "legendFormat": "CPU Load %",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Golden Signal 2 — Traffic (Network bytes/s)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(node_network_receive_bytes_total{device!~\"lo\"}[1m])",
+          "legendFormat": "RX — {{device}}",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "expr": "rate(node_network_transmit_bytes_total{device!~\"lo\"}[1m])",
+          "legendFormat": "TX — {{device}}",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Golden Signal 3 — Errors (Disk I/O errors/s)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 14, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "color": { "mode": "fixed", "fixedColor": "red" }
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(node_disk_read_errors_total[5m]) or vector(0)",
+          "legendFormat": "Read errors/s",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "expr": "rate(node_disk_write_errors_total[5m]) or vector(0)",
+          "legendFormat": "Write errors/s",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Golden Signal 4 — Saturation (Memory used)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 14, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "lineWidth": 2, "fillOpacity": 15 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
+          "legendFormat": "Memory Used",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "expr": "node_memory_MemTotal_bytes",
+          "legendFormat": "Memory Total",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "System Uptime",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 22, "w": 6, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        {
+          "expr": "node_time_seconds - node_boot_time_seconds",
+          "legendFormat": "Uptime",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "id": 10,
+      "title": "Node Exporter Status",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 22, "w": 6, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "mappings": [
+            { "options": { "0": { "text": "DOWN" }, "1": { "text": "UP" } }, "type": "value" }
+          ]
+        }
+      },
+      "targets": [
+        {
+          "expr": "up{job=\"node_exporter\"}",
+          "legendFormat": "Status",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background"
+      }
+    }
+  ]
+}
