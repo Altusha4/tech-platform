@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+
+  frontend:
+    image: tech-platform-frontend:latest
+    ports:
+      - "80:80"
+    networks:
+      - techplatform_net
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  backend:
+    image: tech-platform-backend:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - JWT_SECRET=${JWT_SECRET}
+      - PORT=3000
+      - NODE_ENV=production
+    networks:
+      - techplatform_net
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    ports:
+      - "9090:9090"
+    configs:
+      - source: prometheus_config
+        target: /etc/prometheus/prometheus.yml
+      - source: alert_rules
+        target: /etc/prometheus/alert_rules.yml
+    networks:
+      - techplatform_net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  grafana:
+    image: grafana/grafana:10.3.0
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - techplatform_net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  node_exporter:
+    image: prom/node-exporter:v1.7.0
+    ports:
+      - "9100:9100"
+    networks:
+      - techplatform_net
+    deploy:
+      mode: global
+
+configs:
+  prometheus_config:
+    file: ./monitoring/prometheus.yml
+  alert_rules:
+    file: ./monitoring/alert_rules.yml
+
+volumes:
+  grafana_data:
+
+networks:
+  techplatform_net:
+    driver: overlay
