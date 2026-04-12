@@ -19,5 +19,5 @@ build/
 *.iml
 dump/
 public/uploads
-node_modulesbackend/seed.js
+backend/seed.js
 backend/.env
